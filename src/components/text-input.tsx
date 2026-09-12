@@ -12,6 +12,8 @@ type Props = {
   onEmptyKey?: (input: string) => void
   /** ctrl+h while the input is focused — open help without deleting a char */
   onCtrlH?: () => void
+  /** tab — paste the clipboard value into the field */
+  onTab?: () => void
 }
 
 /** Single-line editor: type, ⌫, ←/→, ^a/^e, ^u, ↵ submits. */
@@ -23,6 +25,7 @@ export function TextInput({
   width = 40,
   onEmptyKey,
   onCtrlH,
+  onTab,
 }: Props) {
   const [cursor, setCursor] = useState(value.length)
 
@@ -38,7 +41,10 @@ export function TextInput({
       onSubmit?.(value)
       return
     }
-    if (key.tab || key.pageUp || key.pageDown || key.upArrow || key.downArrow) return
+    if (key.tab || key.pageUp || key.pageDown || key.upArrow || key.downArrow) {
+      if (key.tab) onTab?.()
+      return
+    }
     if (value === '' && (input === 'q' || key.escape)) {
       onEmptyKey?.(input)
       return

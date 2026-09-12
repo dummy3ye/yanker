@@ -140,19 +140,14 @@ export function App(props: AppProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    if (props.initialUrl) return
-    let cancelled = false
+  const handlePasteFromClipboard = () => {
     void detectClipboardUrl().then(url => {
-      if (!cancelled && url) {
+      if (url) {
         setClipboardUrl(url)
         setUrlInput(url)
       }
     })
-    return () => {
-      cancelled = true
-    }
-  }, [props.initialUrl])
+  }
 
   const startDownload = (choice: DownloadChoice, yesPlaylist = false) => {
     const controller = new AbortController()
@@ -300,10 +295,11 @@ export function App(props: AppProps) {
                 }}
                 onSubmit={handleUrlSubmit}
                 onEmptyKey={() => exit()}
-                onCtrlH={() => {
-                  previousPhaseRef.current = phase
-                  setPhase({ name: 'help' })
-                }}
+onCtrlH={() => {
+                previousPhaseRef.current = phase
+                setPhase({ name: 'help' })
+              }}
+              onTab={handlePasteFromClipboard}
                 placeholder="https://youtube.com/watch?v=…"
                 width={44}
               />
@@ -317,11 +313,13 @@ export function App(props: AppProps) {
                 urlInput === ''
                   ? [
                       ['↵', 'download'],
+                      ['⇥', 'paste'],
                       ['q', 'quit'],
                       ['^h', 'help'],
                     ]
                   : [
                       ['↵', 'download'],
+                      ['⇥', 'paste'],
                       ['^c', 'quit'],
                       ['^h', 'help'],
                     ]
