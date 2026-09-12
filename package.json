@@ -47,5 +47,8 @@
     "@types/react": "^19.2.17",
     "tsup": "^8.5.1",
     "typescript": "^7.0.2"
+  },
+  "publishConfig": {
+    "@dummy3ye:registry": "https://npm.pkg.github.com"
   }
 }
