@@ -1,5 +1,5 @@
 {
-  "name": "yanker",
+  "name": "@dummy3ye/yanker",
   "version": "0.1.0",
   "description": "yanker - grab any video, every quality option with estimated size, right from your terminal.",
   "type": "module",
