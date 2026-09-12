@@ -1,10 +1,4 @@
-```
- _  _ __ _ _ _ | |_____ _ _
-| || / _` | ' \| / / -_) '_|
- \_, \__,_|_||_|_\_\___|_|
- |__/
-```
-
+# Yanker
 a better video **Yoinker**.
 
 Stick a URL in a terminal, watch yanker show you *every* quality the site
