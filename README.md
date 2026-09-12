@@ -3,11 +3,9 @@
 a better video **Yoinker**.
 
 Stick a URL in a terminal, watch yanker show you _every_ quality the site
-offers — with estimated sizes — and grab the one you want. No web UI, no
-fake download buttons, no popups. Paste. pick. yanked.
+offer with estimated sizes and grab the one you want. Paste. pick and yank it.
 
-YouTube, Vimeo, SoundCloud, Instagram, TikTok, X and 1,800+ other sites,
-from `yanker` — a full-screen terminal app.
+pull from YouTube, Vimeo, SoundCloud, Instagram, TikTok, X and other sites.
 
 ## Install
 
@@ -21,7 +19,7 @@ Or try it without installing anything:
 npx @dummy3ye/yanker
 ```
 
-Requires Node 18+. `yt-dlp` and `ffmpeg` are found on your system, and
+Requires Node 18+. `yt-dlp` and `ffmpeg` on your system, and
 yanker bundles/re-fetches its own copies when they're missing:
 
 - `yt-dlp` — used if present, otherwise a standalone build is fetched to
@@ -42,11 +40,10 @@ yanker --theme light                     # force the light palette
 yanker --update-yt-dlp                   # self-update the standalone yt-dlp
 ```
 
-`yanker` takes over the terminal (full-screen, centered — your scrollback
-is restored on exit). It lists **all** available formats: resolution,
+`yanker` lists **all** available formats: resolution,
 codec, container, bitrate and estimated file size, best options first. Pick
 one with `↑`/`↓`, hit enter, and watch it fly. Files land in `~/Videos`
-unless you say otherwise, and the saved path is printed when you're finished.
+otherwise, and the saved path is printed when you're finished.
 
 Playlists are detected automatically — the picker offers "grab all"
 (best or mp3) or "first video only" to walk through the format list of
@@ -69,12 +66,10 @@ dark, without guessing.
 
 ## Why yanker
 
-- **Every format, with sizes.** Not just a "best guess" — the whole list,
+- **Every format, with sizes.** Not just "best guess" you can just choose from the whole list,
   estimated file size included, sorted by quality.
 - **Grab-protected streams.** If a site's CDN pushes back (403 throttling),
   yanker retries with fresh extraction and browser cookies before giving up.
-- **Centered, animated, ANSI.** Figlet logo flickers to life on launch, and
-  everything sits dead-center in whatever terminal you have open.
 - **Keeps the terminal clean.** Alt-screen in, non-TTY-safe `--list` out.
 
 ## Development
@@ -98,4 +93,4 @@ support the people who make what you save.
 
 ## License
 
-[MIT](LICENSE)
+[GNU GENERAL PUBLIC LICENSE](LICENSE)
