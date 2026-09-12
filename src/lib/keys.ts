@@ -1,5 +1,5 @@
-import {useEffect} from 'react'
-import {useStdin} from 'ink'
+import { useEffect } from 'react'
+import { useStdin } from 'ink'
 
 let lastRawKey = ''
 
@@ -15,7 +15,7 @@ export function getLastRawKey(): string {
  * this is read before Ink's own stdin handler runs on the same chunk.
  */
 export function useRawKeyMonitor(): void {
-  const {stdin, isRawModeSupported} = useStdin()
+  const { stdin, isRawModeSupported } = useStdin()
   useEffect(() => {
     if (!stdin || !isRawModeSupported) {
       return

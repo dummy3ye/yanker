@@ -1,4 +1,4 @@
-import {defineConfig} from 'tsup'
+import { defineConfig } from 'tsup'
 
 export default defineConfig({
   entry: ['src/cli.tsx'],
@@ -6,5 +6,5 @@ export default defineConfig({
   target: 'node18',
   clean: true,
   sourcemap: false,
-  banner: {js: '#!/usr/bin/env node'},
+  banner: { js: '#!/usr/bin/env node' },
 })

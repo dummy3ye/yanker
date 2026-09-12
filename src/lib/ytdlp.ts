@@ -1,11 +1,11 @@
-import {spawn, type ChildProcess} from 'node:child_process'
-import {createWriteStream} from 'node:fs'
+import { spawn, type ChildProcess } from 'node:child_process'
+import { createWriteStream } from 'node:fs'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import {Readable} from 'node:stream'
-import {pipeline} from 'node:stream/promises'
-import {formatBytes} from './format.js'
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
+import { formatBytes } from './format.js'
 
 const YANKER_DIR = path.join(os.homedir(), '.yanker', 'bin')
 const RELEASE_BASE = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download'
@@ -20,7 +20,7 @@ function commandWorks(cmd: string, args: string[]): Promise<boolean> {
   return new Promise(resolve => {
     let child: ChildProcess
     try {
-      child = spawn(cmd, args, {stdio: 'ignore', timeout: 10_000})
+      child = spawn(cmd, args, { stdio: 'ignore', timeout: 10_000 })
     } catch {
       resolve(false)
       return
@@ -31,23 +31,26 @@ function commandWorks(cmd: string, args: string[]): Promise<boolean> {
 }
 
 /** System yt-dlp first, then a previously downloaded copy, then fetch the standalone binary. */
-export async function ensureYtDlp(onStatus: (message: string) => void, signal?: AbortSignal): Promise<string> {
+export async function ensureYtDlp(
+  onStatus: (message: string) => void,
+  signal?: AbortSignal,
+): Promise<string> {
   if (await commandWorks('yt-dlp', ['--version'])) return 'yt-dlp'
 
   const local = path.join(YANKER_DIR, process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp')
   if (await commandWorks(local, ['--version'])) return local
 
   onStatus('first run: fetching yt-dlp…')
-  await fs.mkdir(YANKER_DIR, {recursive: true})
+  await fs.mkdir(YANKER_DIR, { recursive: true })
 
   const url = `${RELEASE_BASE}/${ytDlpAssetName()}`
-  const response = await fetch(url, {signal})
+  const response = await fetch(url, { signal })
   if (!response.ok || !response.body) {
     throw new Error(`Could not download yt-dlp (${response.status}). Check your connection.`)
   }
 
   const tmp = `${local}.download`
-  await pipeline(Readable.fromWeb(response.body as never), createWriteStream(tmp), {signal})
+  await pipeline(Readable.fromWeb(response.body as never), createWriteStream(tmp), { signal })
   await fs.chmod(tmp, 0o755)
   await fs.rename(tmp, local)
   return local
@@ -75,7 +78,7 @@ export type VideoInfo = {
   formats?: RawFormat[]
   _type?: string
   playlist_count?: number
-  entries?: Array<{id?: string; url?: string; title?: string}>
+  entries?: Array<{ id?: string; url?: string; title?: string }>
 }
 
 export type PlaylistMeta = {
@@ -120,7 +123,12 @@ export type ProbeOptions = {
   flatPlaylist?: boolean
 }
 
-export async function probe(ytdlp: string, url: string, signal?: AbortSignal, opts?: ProbeOptions): Promise<ProbeResult> {
+export async function probe(
+  ytdlp: string,
+  url: string,
+  signal?: AbortSignal,
+  opts?: ProbeOptions,
+): Promise<ProbeResult> {
   const args = ['-J', '--no-warnings']
   if (opts?.flatPlaylist) {
     args.push('--flat-playlist')
@@ -129,7 +137,7 @@ export async function probe(ytdlp: string, url: string, signal?: AbortSignal, op
   }
   args.push(url)
   const stdout = await new Promise<string>((resolve, reject) => {
-    const child = spawn(ytdlp, args, {signal})
+    const child = spawn(ytdlp, args, { signal })
     let out = ''
     let stderr = ''
     child.stdout.on('data', chunk => (out += chunk))
@@ -157,7 +165,8 @@ export async function probe(ytdlp: string, url: string, signal?: AbortSignal, op
   if (info._type === 'playlist') {
     const entries = info.entries ?? []
     const first = entries[0]
-    const firstUrl = first?.url || (first?.id ? `https://www.youtube.com/watch?v=${first.id}` : undefined)
+    const firstUrl =
+      first?.url || (first?.id ? `https://www.youtube.com/watch?v=${first.id}` : undefined)
     return {
       info,
       infoJsonPath,
@@ -169,7 +178,7 @@ export async function probe(ytdlp: string, url: string, signal?: AbortSignal, op
     }
   }
 
-  return {info, infoJsonPath}
+  return { info, infoJsonPath }
 }
 
 export type DownloadChoice = {
@@ -181,8 +190,10 @@ export type DownloadChoice = {
 }
 
 const isUsable = (f: RawFormat) => f.protocol !== 'mhtml' && f.vcodec !== 'images'
-const isVideoOnly = (f: RawFormat) => isUsable(f) && !!f.vcodec && f.vcodec !== 'none' && (!f.acodec || f.acodec === 'none')
-const isAudioOnly = (f: RawFormat) => isUsable(f) && (!f.vcodec || f.vcodec === 'none') && !!f.acodec && f.acodec !== 'none'
+const isVideoOnly = (f: RawFormat) =>
+  isUsable(f) && !!f.vcodec && f.vcodec !== 'none' && (!f.acodec || f.acodec === 'none')
+const isAudioOnly = (f: RawFormat) =>
+  isUsable(f) && (!f.vcodec || f.vcodec === 'none') && !!f.acodec && f.acodec !== 'none'
 const isCombined = (f: RawFormat) =>
   isUsable(f) && !!f.vcodec && f.vcodec !== 'none' && !!f.acodec && f.acodec !== 'none'
 
@@ -203,7 +214,9 @@ function shortCodec(f: RawFormat): string {
 export function buildChoices(info: VideoInfo, outDir?: string): DownloadChoice[] {
   const formats = (info.formats ?? []).filter(isUsable)
   const duration = info.duration
-  const audioOnly = formats.filter(isAudioOnly).sort((a, b) => (b.tbr ?? b.abr ?? 0) - (a.tbr ?? a.abr ?? 0))
+  const audioOnly = formats
+    .filter(isAudioOnly)
+    .sort((a, b) => (b.tbr ?? b.abr ?? 0) - (a.tbr ?? a.abr ?? 0))
   const bestAudio = audioOnly[0]
   const bestVideo = formats.filter(isVideoOnly).sort(sortByQual)[0]
 
@@ -320,7 +333,7 @@ function resolveFfmpeg(ffmpegLocation: string | undefined): string[] {
   return ffmpegLocation ? ['--ffmpeg-location', ffmpegLocation] : []
 }
 
-function playlistFlag(opt: {yesPlaylist?: boolean}): string[] {
+function playlistFlag(opt: { yesPlaylist?: boolean }): string[] {
   return opt.yesPlaylist ? ['--yes-playlist'] : ['--no-playlist']
 }
 
@@ -344,9 +357,9 @@ export function download(
   handlers: DownloadHandlers,
   signal?: AbortSignal,
 ): Promise<string> {
-  const attempts: Array<{infoJson?: string; choice: DownloadChoice}> = [
-    {infoJson: opts.infoJsonPath, choice: opts.choice},
-    {choice: opts.choice},
+  const attempts: Array<{ infoJson?: string; choice: DownloadChoice }> = [
+    { infoJson: opts.infoJsonPath, choice: opts.choice },
+    { choice: opts.choice },
   ]
   if (opts.ffmpegLocation === undefined) {
     // merge-capable config exists on disk, but yt-dlp may already have used the
@@ -373,8 +386,8 @@ export function download(
       path.join(opts.outDir, '%(title).90s.%(ext)s'),
     ]
 
-    const result = await new Promise<{filepath?: string; error?: string}>(resolvePromise => {
-      const child = spawn(opts.ytdlp, args, {signal})
+    const result = await new Promise<{ filepath?: string; error?: string }>(resolvePromise => {
+      const child = spawn(opts.ytdlp, args, { signal })
       activeChild = child
 
       let stderr = ''
@@ -393,7 +406,9 @@ export function download(
           const line = rawLine.trim()
           if (!line) continue
           if (line.startsWith(PROGRESS_PREFIX)) {
-            const [downloaded, total, totalEstimate, speed, eta] = line.slice(PROGRESS_PREFIX.length).split('|')
+            const [downloaded, total, totalEstimate, speed, eta] = line
+              .slice(PROGRESS_PREFIX.length)
+              .split('|')
             const downloadedBytes = toNumber(downloaded) ?? 0
             if (downloadedBytes < lastDownloaded) part++
             lastDownloaded = downloadedBytes
@@ -431,14 +446,14 @@ export function download(
           return
         }
         if (code === 0 && filepath) {
-          resolvePromise({filepath})
+          resolvePromise({ filepath })
         } else {
-          resolvePromise({error: cleanYtDlpError(stderr) || `yt-dlp exited with code ${code}`})
+          resolvePromise({ error: cleanYtDlpError(stderr) || `yt-dlp exited with code ${code}` })
         }
       })
 
       function reject_resolve(error: Error) {
-        resolvePromise({error: error.message})
+        resolvePromise({ error: error.message })
       }
     })
 
@@ -452,9 +467,9 @@ export function download(
     if (index === 0) {
       for (const browser of ['chrome', 'firefox'] as const) {
         if (!(await browserHasCookies(browser))) continue
-        const withCookies: Array<{infoJson?: string; choice: DownloadChoice}> = [
-          {infoJson: opts.infoJsonPath, choice: opts.choice},
-          {choice: opts.choice},
+        const withCookies: Array<{ infoJson?: string; choice: DownloadChoice }> = [
+          { infoJson: opts.infoJsonPath, choice: opts.choice },
+          { choice: opts.choice },
         ].map(a => ({
           ...a,
           args: ['--cookies-from-browser', browser, ...a.choice.args],
@@ -470,7 +485,7 @@ export function download(
       ...opts.choice,
       args: ['--cookies-from-browser', 'chrome', ...opts.choice.args],
     }
-    const {filepath: fp, error} = await until_chrome_fallback(opts, fallback, handlers, signal)
+    const { filepath: fp, error } = await until_chrome_fallback(opts, fallback, handlers, signal)
     if (fp) return fp
     throw new Error((error ?? '') + (text ? `\n${text}` : ''))
   }
@@ -483,9 +498,9 @@ async function until_chrome_fallback(
   choice: DownloadChoice,
   handlers: DownloadHandlers,
   signal?: AbortSignal,
-): Promise<{filepath?: string; error?: string}> {
+): Promise<{ filepath?: string; error?: string }> {
   if (!(await browserHasCookies('chrome'))) {
-    return {error: 'Download failed — YouTube is blocking this connection.'}
+    return { error: 'Download failed — YouTube is blocking this connection.' }
   }
   const args = [
     opts.url,
@@ -506,17 +521,23 @@ async function until_chrome_fallback(
     path.join(opts.outDir, '%(title).90s.%(ext)s'),
   ]
   return new Promise(resolve => {
-    const child = spawn(opts.ytdlp, args, {signal})
+    const child = spawn(opts.ytdlp, args, { signal })
     activeChild = child
     let stderr = ''
     let filepath = ''
     child.stdout.on('data', chunk => (filepath += chunk.toString()))
     child.stderr.on('data', chunk => (stderr += chunk))
-    child.on('error', e => resolve({error: e.message}))
+    child.on('error', e => resolve({ error: e.message }))
     child.on('close', code => {
       activeChild = undefined
-      if (code === 0) resolve({filepath: filepath.split('\n').map(l => l.trim()).find(p => path.isAbsolute(p))})
-      else resolve({error: cleanYtDlpError(stderr) || `yt-dlp exited with code ${code}`})
+      if (code === 0)
+        resolve({
+          filepath: filepath
+            .split('\n')
+            .map(l => l.trim())
+            .find(p => path.isAbsolute(p)),
+        })
+      else resolve({ error: cleanYtDlpError(stderr) || `yt-dlp exited with code ${code}` })
     })
   })
 }
@@ -525,7 +546,9 @@ type DownloadOpts = Parameters<typeof download>[0]
 
 function removePartials(destinations: string[]): Promise<unknown> {
   return Promise.allSettled(
-    destinations.flatMap(dest => [dest, `${dest}.part`, `${dest}.ytdl`]).map(file => fs.rm(file, {force: true})),
+    destinations
+      .flatMap(dest => [dest, `${dest}.part`, `${dest}.ytdl`])
+      .map(file => fs.rm(file, { force: true })),
   )
 }
 

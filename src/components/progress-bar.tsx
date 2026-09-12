@@ -1,10 +1,10 @@
 import React from 'react'
-import {Box, Text, useStdout} from 'ink'
+import { Box, Text, useStdout } from 'ink'
 
 const BAR_CHARS = [' ', '▏', '▎', '▍', '▌', '▋', '▊', '▉', '█']
 
-export function ProgressBar({percent, color = '#a78bfa'}: {percent: number; color?: string}) {
-  const {stdout} = useStdout()
+export function ProgressBar({ percent, color = '#a78bfa' }: { percent: number; color?: string }) {
+  const { stdout } = useStdout()
   const columns = stdout.columns > 0 ? stdout.columns : 80
   const width = Math.max(10, Math.min(64, columns - 6))
   const filled = Math.max(0, Math.min(1, percent)) * width

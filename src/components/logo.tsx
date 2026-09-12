@@ -1,12 +1,12 @@
-import React, {useEffect, useMemo, useState} from 'react'
-import {Box, Text} from 'ink'
-import {getTheme, type ThemeMode} from '../theme.js'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Box, Text } from 'ink'
+import { getTheme, type ThemeMode } from '../theme.js'
 
 // figlet -f small "yanker"
 const ART = [
   '                _           ',
   ' _  _ __ _ _ _ | |_____ _ _ ',
-  '| || / _` | \' \\| / / -_) \'_|',
+  "| || / _` | ' \\| / / -_) '_|",
   ' \\_, \\__,_|_||_|_\\_\\___|_|  ',
   ' |__/                       ',
 ]
@@ -26,14 +26,22 @@ const ease = (t: number) => 1 - Math.pow(1 - t, 3)
 
 type Phase = 'intro' | 'idle' | 'sweep'
 
-function cellAt(ch: string, row: number, col: number, phase: Phase, t: number, delay: number, theme: ReturnType<typeof getTheme>) {
-  if (ch === ' ' || phase === 'idle') return {ch, color: theme.primary, dim: false}
+function cellAt(
+  ch: string,
+  row: number,
+  col: number,
+  phase: Phase,
+  t: number,
+  delay: number,
+  theme: ReturnType<typeof getTheme>,
+) {
+  if (ch === ' ' || phase === 'idle') return { ch, color: theme.primary, dim: false }
   if (phase === 'intro') {
     const dt = t - delay
-    if (dt < 0) return {ch: ' ', color: theme.primary, dim: false}
-    if (dt < 110) return {ch: '░', color: theme.gray, dim: true}
-    if (dt < 220) return {ch: '▒', color: theme.gray, dim: true}
-    return {ch, color: theme.primary, dim: false}
+    if (dt < 0) return { ch: ' ', color: theme.primary, dim: false }
+    if (dt < 110) return { ch: '░', color: theme.gray, dim: true }
+    if (dt < 220) return { ch: '▒', color: theme.gray, dim: true }
+    return { ch, color: theme.primary, dim: false }
   }
   // sweep — beam position leans right as it climbs; thin ASCII glyphs can't
   // swap to a lighter block, so they dim like the half-blocks do
@@ -43,18 +51,25 @@ function cellAt(ch: string, row: number, col: number, phase: Phase, t: number, d
   const p = pMin + ease(t / SWEEP_MS) * (pMax - pMin)
   const d = Math.abs(col - (ROWS - 1 - row) * TILT - p)
   if (d <= HALF && 1 - d / HALF > 0.35) {
-    return {ch, color: theme.gray, dim: true}
+    return { ch, color: theme.gray, dim: true }
   }
-  return {ch, color: theme.primary, dim: false}
+  return { ch, color: theme.primary, dim: false }
 }
 
-function renderRow(row: number, phase: Phase, t: number, delays: number[], theme: ReturnType<typeof getTheme>) {
-  const segments: Array<{text: string; color?: string; dim: boolean}> = []
+function renderRow(
+  row: number,
+  phase: Phase,
+  t: number,
+  delays: number[],
+  theme: ReturnType<typeof getTheme>,
+) {
+  const segments: Array<{ text: string; color?: string; dim: boolean }> = []
   GRID[row].forEach((ch, col) => {
     const cell = cellAt(ch, row, col, phase, t, delays[col], theme)
     const last = segments[segments.length - 1]
-    if (last && ((last.color === cell.color && last.dim === cell.dim) || cell.ch === ' ')) last.text += cell.ch
-    else segments.push({text: cell.ch, color: cell.color, dim: cell.dim})
+    if (last && ((last.color === cell.color && last.dim === cell.dim) || cell.ch === ' '))
+      last.text += cell.ch
+    else segments.push({ text: cell.ch, color: cell.color, dim: cell.dim })
   })
   return segments.map((seg, i) => (
     <Text key={i} color={seg.color} dimColor={seg.dim}>
@@ -67,7 +82,7 @@ type Props = {
   themeMode: ThemeMode
 }
 
-export function Logo({themeMode}: Props) {
+export function Logo({ themeMode }: Props) {
   const theme = getTheme(themeMode)
   const animated = Boolean(process.stdout.isTTY) && Boolean(process.stdin.isTTY)
   const delays = useMemo(

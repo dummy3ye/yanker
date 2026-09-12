@@ -1,7 +1,8 @@
 # Yanker
+
 a better video **Yoinker**.
 
-Stick a URL in a terminal, watch yanker show you *every* quality the site
+Stick a URL in a terminal, watch yanker show you _every_ quality the site
 offers — with estimated sizes — and grab the one you want. No web UI, no
 fake download buttons, no popups. Paste. pick. yanked.
 
@@ -54,14 +55,14 @@ text looks like a link it's suggested right in the URL field.
 
 ### Keys
 
-| Key | Action |
-| --- | ------ |
-| `↵` | download / submit |
-| `↑` `↓` | choose a format |
-| `esc` | back (or cancel) |
-| `q` | quit (when the field is empty) |
-| `^c` | quit |
-| `^t` | cycle theme: auto → light → dark |
+| Key     | Action                           |
+| ------- | -------------------------------- |
+| `↵`     | download / submit                |
+| `↑` `↓` | choose a format                  |
+| `esc`   | back (or cancel)                 |
+| `q`     | quit (when the field is empty)   |
+| `^c`    | quit                             |
+| `^t`    | cycle theme: auto → light → dark |
 
 The `auto` theme follows your terminal's own foreground/background, light or
 dark, without guessing.

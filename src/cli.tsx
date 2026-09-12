@@ -1,8 +1,8 @@
 import React from 'react'
-import {spawn} from 'node:child_process'
-import {createRequire} from 'node:module'
-import {render} from 'ink'
-import {App} from './app.js'
+import { spawn } from 'node:child_process'
+import { createRequire } from 'node:module'
+import { render } from 'ink'
+import { App } from './app.js'
 import {
   buildChoices,
   download,
@@ -11,7 +11,7 @@ import {
   probe,
   type DownloadChoice,
 } from './lib/ytdlp.js'
-import {formatBytes, formatDuration} from './lib/format.js'
+import { formatBytes, formatDuration } from './lib/format.js'
 
 const VERSION: string = createRequire(import.meta.url)('../package.json').version
 
@@ -83,7 +83,8 @@ function parseArgs(argv: string[]): {
       update = true
     } else if (arg === '-o' || arg === '--output') {
       const next = argv[i + 1]
-      if (!next) return {outDir, list, best, mp3, update, help, version, error: `missing value for ${arg}`}
+      if (!next)
+        return { outDir, list, best, mp3, update, help, version, error: `missing value for ${arg}` }
       outDir = next
       i++
     } else if (arg.startsWith('-o') && arg.length > 2) {
@@ -91,14 +92,32 @@ function parseArgs(argv: string[]): {
     } else if (arg === '--theme') {
       const next = argv[i + 1]
       if (next !== 'light' && next !== 'dark' && next !== 'auto') {
-        return {outDir, list, best, mp3, update, help, version, error: `--theme must be light, dark or auto`}
+        return {
+          outDir,
+          list,
+          best,
+          mp3,
+          update,
+          help,
+          version,
+          error: `--theme must be light, dark or auto`,
+        }
       }
       theme = next
       i++
     } else if (arg.startsWith('--theme=')) {
       const value = arg.slice('--theme='.length)
       if (value !== 'light' && value !== 'dark' && value !== 'auto') {
-        return {outDir, list, best, mp3, update, help, version, error: `--theme must be light, dark or auto`}
+        return {
+          outDir,
+          list,
+          best,
+          mp3,
+          update,
+          help,
+          version,
+          error: `--theme must be light, dark or auto`,
+        }
       }
       theme = value
     } else if (arg === '--') {
@@ -106,11 +125,11 @@ function parseArgs(argv: string[]): {
     } else if (!arg.startsWith('-')) {
       url = arg
     } else {
-      return {outDir, list, best, mp3, update, help, version, error: `unknown option ${arg}`}
+      return { outDir, list, best, mp3, update, help, version, error: `unknown option ${arg}` }
     }
   }
 
-  return {url, outDir, theme, list, best, mp3, update, help, version}
+  return { url, outDir, theme, list, best, mp3, update, help, version }
 }
 
 function path_home(rel: string): string {
@@ -136,10 +155,12 @@ if (args.list && args.url) {
   const url = args.url
   console.log(`yanker: fetching ${url}…\n`)
   const ytdlp = await ensureYtDlp(() => {})
-  const {info} = await probe(ytdlp, url)
+  const { info } = await probe(ytdlp, url)
   const choices = buildChoices(info, args.outDir)
   console.log(`${info.title}`)
-  console.log(`${info.uploader ?? ''}${info.duration ? ` · ${formatDuration(info.duration)}` : ''}\n`)
+  console.log(
+    `${info.uploader ?? ''}${info.duration ? ` · ${formatDuration(info.duration)}` : ''}\n`,
+  )
 
   const rows = choices.map((choice, index) => {
     const size = /~([\d.]+ [KMG]?i?B)/.exec(choice.detail)?.[1] ?? ''
@@ -171,9 +192,9 @@ const MP3_CHOICE: DownloadChoice = {
   args: ['-f', 'ba/b', '-x', '--audio-format', 'mp3'],
 }
 
-async function headlessRun(cfg: {url: string; outDir: string; mp3: boolean}): Promise<void> {
+async function headlessRun(cfg: { url: string; outDir: string; mp3: boolean }): Promise<void> {
   const ytdlp = await ensureYtDlp(() => {})
-  const {info, playlist} = await probe(ytdlp, cfg.url, undefined, {flatPlaylist: true})
+  const { info, playlist } = await probe(ytdlp, cfg.url, undefined, { flatPlaylist: true })
 
   let choice: DownloadChoice
   let yesPlaylist = false
@@ -195,29 +216,33 @@ async function headlessRun(cfg: {url: string; outDir: string; mp3: boolean}): Pr
   console.log(`yanker: grabbing ${title}…`)
   const ffmpegLocation = await findFfmpeg()
   const filepath = await download(
-    {ytdlp, ffmpegLocation, url: cfg.url, choice, outDir: cfg.outDir, yesPlaylist},
-    {onProgress: () => {}, onProcessing: () => {}},
+    { ytdlp, ffmpegLocation, url: cfg.url, choice, outDir: cfg.outDir, yesPlaylist },
+    { onProgress: () => {}, onProcessing: () => {} },
   )
-  console.log(`✓ yanked${yesPlaylist ? ' whole playlist' : ''} → ${yesPlaylist ? cfg.outDir : filepath}`)
+  console.log(
+    `✓ yanked${yesPlaylist ? ' whole playlist' : ''} → ${yesPlaylist ? cfg.outDir : filepath}`,
+  )
 }
 
 if (args.update) {
   const ytdlp = await ensureYtDlp(() => {})
   console.log(`yanker: updating yt-dlp… (${ytdlp === 'yt-dlp' ? 'system copy' : 'standalone'})`)
   const code = await new Promise<number | null>(resolve => {
-    const child = spawn(ytdlp, ['-U'], {stdio: 'inherit'})
+    const child = spawn(ytdlp, ['-U'], { stdio: 'inherit' })
     child.on('error', () => resolve(1))
     child.on('close', resolve)
   })
   if ((code ?? 1) !== 0 && ytdlp === 'yt-dlp') {
-    console.log('yanker: this yt-dlp is package-managed — update it with your package manager (e.g. pacman -Syu)')
+    console.log(
+      'yanker: this yt-dlp is package-managed — update it with your package manager (e.g. pacman -Syu)',
+    )
   }
   process.exit((code ?? 1) === 0 ? 0 : 1)
 }
 
 if ((args.best || args.mp3 || !process.stdout.isTTY) && args.url) {
   try {
-    await headlessRun({url: args.url, outDir: args.outDir, mp3: args.mp3})
+    await headlessRun({ url: args.url, outDir: args.outDir, mp3: args.mp3 })
   } catch (error) {
     console.error(`yanker: ${error instanceof Error ? error.message : String(error)}`)
     process.exit(1)
@@ -247,8 +272,13 @@ if (isTTY) {
 }
 
 let outcome = ''
-const {waitUntilExit} = render(
-  <App initialUrl={args.url} initialThemeMode={args.theme} outDir={args.outDir} onOutcome={fp => (outcome = fp)} />,
+const { waitUntilExit } = render(
+  <App
+    initialUrl={args.url}
+    initialThemeMode={args.theme}
+    outDir={args.outDir}
+    onOutcome={fp => (outcome = fp)}
+  />,
 )
 
 await waitUntilExit()

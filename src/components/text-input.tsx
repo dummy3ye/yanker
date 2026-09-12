@@ -1,6 +1,6 @@
-import React, {useState} from 'react'
-import {Box, Text, useInput} from 'ink'
-import {getLastRawKey} from '../lib/keys.js'
+import React, { useState } from 'react'
+import { Box, Text, useInput } from 'ink'
+import { getLastRawKey } from '../lib/keys.js'
 
 type Props = {
   value: string
@@ -15,7 +15,15 @@ type Props = {
 }
 
 /** Single-line editor: type, ⌫, ←/→, ^a/^e, ^u, ↵ submits. */
-export function TextInput({value, onChange, onSubmit, placeholder = '', width = 40, onEmptyKey, onCtrlH}: Props) {
+export function TextInput({
+  value,
+  onChange,
+  onSubmit,
+  placeholder = '',
+  width = 40,
+  onEmptyKey,
+  onCtrlH,
+}: Props) {
   const [cursor, setCursor] = useState(value.length)
 
   const place = (position: number) => setCursor(Math.max(0, Math.min(value.length, position)))
@@ -72,7 +80,7 @@ export function TextInput({value, onChange, onSubmit, placeholder = '', width = 
           <Text color="#6b7280">{placeholder.slice(0, span - 1)}</Text>
         </>
       ) : (
-        Array.from({length: Math.min(span, value.length - offset + 1)}, (_, column) => {
+        Array.from({ length: Math.min(span, value.length - offset + 1) }, (_, column) => {
           const index = offset + column
           return (
             <Text key={index} inverse={index === cursor}>

@@ -1,8 +1,8 @@
-import React, {useEffect, useState, type ReactNode} from 'react'
-import {Box, useStdout} from 'ink'
+import React, { useEffect, useState, type ReactNode } from 'react'
+import { Box, useStdout } from 'ink'
 
-export function FullScreen({children}: {children: ReactNode}) {
-  const {stdout} = useStdout()
+export function FullScreen({ children }: { children: ReactNode }) {
+  const { stdout } = useStdout()
   const dimensions = () => ({
     columns: stdout?.columns && stdout.columns > 0 ? stdout.columns : 80,
     rows: stdout?.rows && stdout.rows > 1 ? stdout.rows : 24,

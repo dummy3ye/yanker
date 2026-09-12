@@ -1,8 +1,12 @@
-import {spawn} from 'node:child_process'
+import { spawn } from 'node:child_process'
 
 function sniff(cmd: string[], timeoutMs: number): Promise<string> {
   return new Promise(resolve => {
-    const child = spawn(cmd[0], cmd.slice(1), {stdio: ['ignore', 'pipe', 'ignore'], timeout: timeoutMs, windowsHide: true})
+    const child = spawn(cmd[0], cmd.slice(1), {
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: timeoutMs,
+      windowsHide: true,
+    })
     let out = ''
     child.stdout.on('data', (chunk: Buffer) => (out += chunk.toString()))
     child.on('error', () => resolve(''))
@@ -19,11 +23,7 @@ function clipboardCommands(): string[][] {
   }
   if (process.env.WAYLAND_DISPLAY) {
     // native Wayland clipboard first; XWayland (xclip/xsel) as fallback
-    return [
-      ['wl-paste'],
-      ['xclip', '-selection', 'clipboard', '-o'],
-      ['xsel', '-b', '-o'],
-    ]
+    return [['wl-paste'], ['xclip', '-selection', 'clipboard', '-o'], ['xsel', '-b', '-o']]
   }
   return [
     ['xclip', '-selection', 'clipboard', '-o'],
@@ -37,7 +37,8 @@ export async function detectClipboardUrl(): Promise<string | undefined> {
     const value = await sniff(cmd, 800)
     if (!value) continue
     const candidate = value.split('\n')[0]?.trim() ?? ''
-    if (candidate && /^https?:\/\/\S+$/i.test(candidate) && !candidate.includes(' ')) return candidate
+    if (candidate && /^https?:\/\/\S+$/i.test(candidate) && !candidate.includes(' '))
+      return candidate
   }
   return undefined
 }

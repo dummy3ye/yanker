@@ -7,8 +7,8 @@ export type Theme = {
   dim: boolean
 }
 
-const LIGHT: Theme = {mode: 'light', primary: '#8a5cf6', gray: '#6b6b76', dim: true}
-const DARK: Theme = {mode: 'dark', primary: '#a78bfa', gray: '#9ca3af', dim: false}
+const LIGHT: Theme = { mode: 'light', primary: '#8a5cf6', gray: '#6b6b76', dim: true }
+const DARK: Theme = { mode: 'dark', primary: '#a78bfa', gray: '#9ca3af', dim: false }
 
 function detectMode(): 'light' | 'dark' {
   const colorFgBg = process.env.COLORFGBG
