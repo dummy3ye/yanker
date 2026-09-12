@@ -16,7 +16,7 @@ export function FullScreen({ children }: { children: ReactNode }) {
     return () => {
       stdout.off('resize', onResize)
     }
-  }, [stdout])
+  }, [stdout, dimensions])
 
   return (
     <Box
