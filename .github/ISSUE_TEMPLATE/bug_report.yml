@@ -1,0 +1,99 @@
+name: Bug report
+description: Something is broken — yanker crashed, hung, or gave the wrong output.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please fill this out as completely as you can.
+        Search open and closed issues first — yours may already be filed.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear, concise description of the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command you ran
+      description: The exact command that triggered the bug.
+      placeholder: yanker https://youtu.be/... --list
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      description: What should have happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output / error message
+      description: Paste the terminal output or error, verbatim. If it's long, cut to the relevant part and note that.
+      render: text
+  - type: input
+    id: yanker-version
+    attributes:
+      label: yanker version
+      description: Version or the commit you're on. "latest" is fine if you ran it via npx.
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node version
+      description: Output of `node --version`.
+      placeholder: v22.x
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where did it run?
+      description: yanker is a full-screen terminal app — this matters a lot.
+      multiple: true
+      options:
+        - Real terminal (TTY)
+        - tmux or screen
+        - Piped output (non-TTY, e.g. `| cat`)
+        - Windows Terminal
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: terminal
+    attributes:
+      label: Terminal emulator
+      description: e.g. foot, kitty, alacritty, GNOME Terminal, Windows Terminal, iTerm2.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS / platform
+      description: e.g. Arch Linux, macOS 14, Windows 11.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps to trigger the bug, starting from a clean state.
+      placeholder: |
+        1. Run `npm install -g @dummy3ye/yanker`
+        2. Run `yanker <url>`
+        3. Press Tab to paste the URL
+        4. See …
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?
+      description: Does it reproduce on every site or just one? Any workaround you found?
+      placeholder: Only happens with Vimeo URLs longer than …; worked around by using --best.

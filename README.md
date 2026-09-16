@@ -7,6 +7,8 @@ offer with estimated sizes and grab the one you want. Paste. pick and yank it.
 
 pull from YouTube, Vimeo, SoundCloud, Instagram, TikTok, X and other sites.
 
+![yanker in action](https://raw.githubusercontent.com/dummy3ye/yanker/master/assets/showcase.gif)
+
 ## Install
 
 ```sh
@@ -47,8 +49,8 @@ otherwise, and the saved path is printed when you're finished.
 
 Playlists are detected automatically — the picker offers "grab all"
 (best or mp3) or "first video only" to walk through the format list of
-the first entry. Launching bare also watches the clipboard: if your copied
-text looks like a link it's suggested right in the URL field.
+the first entry. Press **Tab** in the URL field to paste whatever is in
+your clipboard — if it looks like a link it lands right in the field.
 
 ### Keys
 
@@ -93,4 +95,4 @@ support the people who make what you save.
 
 ## License
 
-[GNU GENERAL PUBLIC LICENSE](LICENSE)
+[MIT](LICENSE)

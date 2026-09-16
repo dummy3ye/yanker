@@ -1,0 +1,47 @@
+name: Feature request
+description: An idea for something yanker should do, or do better.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Check the README and open/closed issues first —
+        it may already exist or be planned.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's the problem?
+      description: What are you trying to do that yanker can't do today? Describe the situation, not how to fix it.
+      placeholder: I want to download a whole channel as audio files in one go, but yanker only grabs a single playlist.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What should the behavior look like? Keep it concrete — flags, keys, output, defaults.
+      placeholder: A `yanker <url> --channel-best` mode that walks every video in a channel.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Other approaches or existing tools/options you've tried.
+      placeholder: Currently I have to run yanker once per video, or fall back to a raw yt-dlp command.
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      description: Roughly how big is this change?
+      options:
+        - Small (a flag, a key, a tweak)
+        - Medium (a new mode or view)
+        - Large (new integration, major rework)
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?
+      description: Mockups, related issues, links, or examples from other tools.
