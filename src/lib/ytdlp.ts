@@ -121,6 +121,8 @@ export type ProbeResult = {
 export type ProbeOptions = {
   /** Detect playlists (flat entries) instead of stripping them. */
   flatPlaylist?: boolean
+  /** Netscape-format cookies file (passed as `--cookies`) used while probing. */
+  cookiesFile?: string
 }
 
 export async function probe(
@@ -130,6 +132,7 @@ export async function probe(
   opts?: ProbeOptions,
 ): Promise<ProbeResult> {
   const args = ['-J', '--no-warnings']
+  if (opts?.cookiesFile) args.push('--cookies', opts.cookiesFile)
   if (opts?.flatPlaylist) {
     args.push('--flat-playlist')
   } else {
@@ -299,14 +302,36 @@ export function buildChoices(info: VideoInfo, outDir?: string): DownloadChoice[]
 }
 
 /** True when passing cookies from the named browser (returns false if it's not installed). */
-async function browserHasCookies(name: 'chrome' | 'firefox'): Promise<boolean> {
-  const dir = name === 'chrome' ? 'google-chrome' : 'firefox'
+async function browserHasCookies(name: string): Promise<boolean> {
+  const dirMap: Record<string, string> = {
+    chrome: 'google-chrome',
+    firefox: 'firefox',
+    safari: 'Safari',
+    edge: 'microsoft-edge',
+    brave: 'BraveSoftware/Brave-Browser',
+    vivaldi: 'vivaldi',
+    opera: 'opera',
+  }
+  const dir = dirMap[name]
+  if (!dir) return false
   try {
     await fs.access(path.join(os.homedir(), '.config', dir))
     return true
   } catch {
     return false
   }
+}
+
+/** Return list of browser names (yt-dlp compatible) that have cookie stores present. */
+async function getAvailableBrowsersWithCookies(): Promise<string[]> {
+  const candidates = [
+    'chrome', 'firefox', 'safari', 'edge', 'brave', 'vivaldi', 'opera',
+  ] as const
+  const available: string[] = []
+  for (const b of candidates) {
+    if (await browserHasCookies(b)) available.push(b)
+  }
+  return available
 }
 
 export type DownloadProgress = {
@@ -337,11 +362,38 @@ function playlistFlag(opt: { yesPlaylist?: boolean }): string[] {
   return opt.yesPlaylist ? ['--yes-playlist'] : ['--no-playlist']
 }
 
+/** yt-dlp paths where `--impersonate` is unusable (old build / no curl_cffi). */
+const impersonateBroken = new Set<string>()
+
+const impersonateArgs = (ytdlp: string): string[] =>
+  impersonateBroken.has(ytdlp) ? [] : ['--impersonate', 'chrome']
+
+const isImpersonateError = (text: string): boolean =>
+  /impersonat|curl.?cffi/i.test(text)
+
+const isCookieError = (text: string): boolean =>
+  /could not copy|cookie.*(lock|database)|decrypt.*cookie|keyring/i.test(text)
+
+/** Non-internal IP families on this host — used for the v4/v6 fallback. */
+function localFamilies(): { v4: boolean; v6: boolean } {
+  let v4 = false
+  let v6 = false
+  for (const addrs of Object.values(os.networkInterfaces())) {
+    for (const a of addrs ?? []) {
+      if (a.internal) continue
+      if (a.family === 'IPv4') v4 = true
+      if (a.family === 'IPv6') v6 = true
+    }
+  }
+  return { v4, v6 }
+}
+
 /**
- * Runs yt-dlp, streaming progress. If the stream is blocked (HTTP 403 —
- * common on throttled CGNAT/shared IPs), it retries with baked-in
- * `--cookies-from-browser` so an authenticated session gets the streams
- * through. Returns the final downloaded filepath.
+ * Runs yt-dlp, streaming progress. YouTube frequently 403s mid-download
+ * (throttled CGNAT/shared IPs, fingerprint-gated streams), so every
+ * attempt impersonates Chrome's TLS fingerprint and the chain silently
+ * falls back through browser cookies — no UI noise, no user prompts.
+ * Returns the final downloaded filepath.
  */
 export function download(
   opts: {
@@ -353,25 +405,46 @@ export function download(
     outDir: string
     /** Download the whole playlist instead of a single video. */
     yesPlaylist?: boolean
+    /**
+     * Netscape-format cookies file (`--cookies`). When given, it is used on
+     * every attempt and the automatic browser-cookie fallbacks are skipped —
+     * the file is the explicit source of truth.
+     */
+    cookiesFile?: string
   },
   handlers: DownloadHandlers,
   signal?: AbortSignal,
 ): Promise<string> {
-  const attempts: Array<{ infoJson?: string; choice: DownloadChoice }> = [
-    { infoJson: opts.infoJsonPath, choice: opts.choice },
-    { choice: opts.choice },
+  const attempts: Array<{
+    infoJson?: string
+    choice: DownloadChoice
+    label: string
+    extraArgs?: string[]
+  }> = [
+    { infoJson: opts.infoJsonPath, choice: opts.choice, label: 'plain' },
+    { choice: opts.choice, label: 'plain (fresh)' },
   ]
+  const attemptErrors: Array<{ label: string; error: string }> = []
   if (opts.ffmpegLocation === undefined) {
     // merge-capable config exists on disk, but yt-dlp may already have used the
     // probed URLs — a fresh extraction with cookies is the strongest retry
   }
+
+  const cookieArgs = opts.cookiesFile ? ['--cookies', opts.cookiesFile] : []
 
   async function runAttempt(index: number): Promise<string> {
     const attempt = attempts[index]
     const args = [
       ...(attempt.infoJson ? ['--load-info-json', attempt.infoJson] : [opts.url]),
       ...playlistFlag(opts),
+      ...cookieArgs,
       ...attempt.choice.args,
+      ...(attempt.extraArgs ?? []),
+      ...impersonateArgs(opts.ytdlp),
+      '--socket-timeout',
+      '15',
+      '--retries',
+      '10',
       '--no-warnings',
       '--newline',
       '--no-quiet',
@@ -459,35 +532,70 @@ export function download(
 
     if (result.filepath) return result.filepath
 
-    // a transient block? only worth the cookies retry when it smells like one
     const text = result.error ?? ''
-    const looksBlocked = /403|Forbidden|Requested format is not available/i.test(text)
-    if (!looksBlocked) throw new Error(text)
+    attemptErrors.push({ label: attempt.label, error: text })
 
-    if (index === 0) {
-      for (const browser of ['chrome', 'firefox'] as const) {
-        if (!(await browserHasCookies(browser))) continue
-        const withCookies: Array<{ infoJson?: string; choice: DownloadChoice }> = [
-          { infoJson: opts.infoJsonPath, choice: opts.choice },
-          { choice: opts.choice },
-        ].map(a => ({
-          ...a,
-          args: ['--cookies-from-browser', browser, ...a.choice.args],
-        }))
-        attempts.splice(1, 0, ...withCookies)
+    // `--impersonate` unsupported here (old yt-dlp / no curl_cffi)?
+    // Drop the flag and retry this same attempt once, without advancing.
+    if (isImpersonateError(text) && !impersonateBroken.has(opts.ytdlp)) {
+      impersonateBroken.add(opts.ytdlp)
+      return runAttempt(index)
+    }
+
+    // Silent fallback: on ANY failure, walk through extra families and
+    // browser cookies — fresh extraction first (cached info-json URLs are
+    // usually already dead). Handles throttling, IP-family bans,
+    // format-unavailable, geo-block, auth-wall, etc. — no UI noise.
+    // A user-supplied cookies file is authoritative, so skip this whole chain.
+    if (index === 0 && !opts.cookiesFile) {
+      const extra: typeof attempts = []
+      const { v4, v6 } = localFamilies()
+      if (v4 && v6) {
+        // CDN throttles are often per-IP-family; the other one may be clean.
+        extra.push(
+          { choice: opts.choice, label: 'ipv6', extraArgs: ['--force-ipv6'] },
+          { choice: opts.choice, label: 'ipv4', extraArgs: ['--force-ipv4'] },
+        )
       }
+      const browsers = await getAvailableBrowsersWithCookies()
+      for (const b of browsers) {
+        const cookieArgs = ['--cookies-from-browser', b]
+        extra.push({
+          choice: { ...opts.choice, args: [...cookieArgs, ...opts.choice.args] },
+          label: `cookies:${b}`,
+        })
+        if (opts.infoJsonPath) {
+          extra.push({
+            infoJson: opts.infoJsonPath,
+            choice: { ...opts.choice, args: [...cookieArgs, ...opts.choice.args] },
+            label: `cookies:${b} (cached)`,
+          })
+        }
+      }
+      attempts.splice(1, 0, ...extra)
     }
 
     if (index < attempts.length - 1) return runAttempt(index + 1)
 
-    // nothing worked — last resort: same choice, but with chrome cookies forced
-    const fallback: DownloadChoice = {
-      ...opts.choice,
-      args: ['--cookies-from-browser', 'chrome', ...opts.choice.args],
+    // Browser cookie store unreadable (e.g. locked profile)? Say so plainly.
+    if (attemptErrors.some(e => e.label.startsWith('cookies:') && isCookieError(e.error))) {
+      throw new Error(
+        'Could not read browser cookies — close the browser you use for YouTube and try again.\n' +
+          text,
+      )
     }
-    const { filepath: fp, error } = await until_chrome_fallback(opts, fallback, handlers, signal)
-    if (fp) return fp
-    throw new Error((error ?? '') + (text ? `\n${text}` : ''))
+
+    // nothing worked — last resort: force chrome cookies if available
+    if (!opts.cookiesFile && (await browserHasCookies('chrome'))) {
+      const fallback: DownloadChoice = {
+        ...opts.choice,
+        args: ['--cookies-from-browser', 'chrome', ...opts.choice.args],
+      }
+      const { filepath: fp, error } = await until_chrome_fallback(opts, fallback, handlers, signal)
+      if (fp) return fp
+      throw new Error((error ?? '') + (text ? `\n${text}` : ''))
+    }
+    throw new Error(text || `yt-dlp exited with code ${result.error}`)
   }
 
   return runAttempt(0)
@@ -506,6 +614,11 @@ async function until_chrome_fallback(
     opts.url,
     ...playlistFlag(opts),
     ...choice.args,
+    ...impersonateArgs(opts.ytdlp),
+    '--socket-timeout',
+    '15',
+    '--retries',
+    '10',
     '--no-playlist',
     '--no-warnings',
     '--newline',
@@ -564,5 +677,31 @@ export function cleanYtDlpError(stderr: string): string {
     .map(l => l.trim())
     .filter(l => l.startsWith('ERROR:'))
   const last = lines.at(-1)
-  return last ? last.replace(/^ERROR:\s*(\[[^\]]+\]\s*)?/, '') : ''
+  if (!last) return ''
+  let text = last.replace(/^ERROR:\s*(\[[^\]]+\]\s*)?/, '')
+
+  // yt-dlp's canned failure blobs are verbose multi-line wallpapers of
+  // text; swap the well-known ones for a one-liner so the error screen
+  // stays readable even on narrow terminals.
+  const oneLiners: Array<[RegExp, string]> = [
+    [
+      /Sign in to confirm you're not a bot.*/i,
+      "Sign in to confirm you're not a bot — this connection is blocked.",
+    ],
+    [
+      /Requested format is not available.*/i,
+      'Requested format is not available.',
+    ],
+    [
+      /HTTP Error 403: Forbidden.*/i,
+      'Stream blocked (HTTP 403) — often IP-level throttling.',
+    ],
+  ]
+  for (const [pattern, replacement] of oneLiners) {
+    if (pattern.test(text)) {
+      text = replacement
+      break
+    }
+  }
+  return text
 }

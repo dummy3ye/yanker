@@ -35,6 +35,8 @@ export type AppProps = {
   initialUrl?: string
   initialThemeMode?: ThemeMode
   outDir: string
+  /** Netscape-format cookies file (`--cookies`) used for probing + downloads. */
+  cookiesFile?: string
   onOutcome: (filepath: string) => void
 }
 
@@ -118,6 +120,7 @@ export function App(props: AppProps) {
       setPhase({ name: 'probing', status: 'fetching video info…' })
       const { info, infoJsonPath, playlist } = await probe(ytdlp, target, controller.signal, {
         flatPlaylist: true,
+        cookiesFile: props.cookiesFile,
       })
       if (controller.signal.aborted) return
       infoJsonRef.current = infoJsonPath
@@ -175,6 +178,7 @@ export function App(props: AppProps) {
             choice,
             outDir: props.outDir,
             yesPlaylist,
+            cookiesFile: props.cookiesFile,
           },
           handlers,
           controller.signal,
@@ -199,6 +203,7 @@ export function App(props: AppProps) {
         ytdlpRef.current,
         firstUrl ?? '',
         controller.signal,
+        { cookiesFile: props.cookiesFile },
       )
       if (controller.signal.aborted) return
       setUrl(firstUrl ?? '')
@@ -304,7 +309,7 @@ onCtrlH={() => {
                 width={44}
               />
               {clipboardUrl ? (
-                <Text color={themeProxy.primary}>detected from clipboard: {clipboardUrl}</Text>
+                <Text color={themeProxy.primary}>pasted from clipboard</Text>
               ) : null}
             </Box>
             <Shortcuts

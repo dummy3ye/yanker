@@ -13,15 +13,21 @@ export function FullScreen({ children }: { children: ReactNode }) {
     if (!stdout) return
     const onResize = () => setSize(dimensions())
     stdout.on('resize', onResize)
+    // Initial sync in case we mounted after a resize
+    setSize(dimensions())
     return () => {
       stdout.off('resize', onResize)
     }
   }, [stdout, dimensions])
 
+  // Guard against zero/negative dimensions which can break Ink layout
+  const safeWidth = Math.max(1, size.columns)
+  const safeHeight = Math.max(1, size.rows - 1)
+
   return (
     <Box
-      width={size.columns}
-      height={size.rows - 1}
+      width={safeWidth}
+      height={safeHeight}
       flexDirection="column"
       alignItems="center"
       justifyContent="center"

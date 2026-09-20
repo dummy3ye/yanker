@@ -1,10 +1,9 @@
 import React from 'react'
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
-import { render } from 'ink'
-import { App } from './app.js'
 import {
   buildChoices,
   download,
@@ -30,10 +29,17 @@ const HELP = `
     $ yanker <url> --list           (print every format + size, no download)
     $ yanker <url> --best           (grab the best format, no picker)
     $ yanker <url> --mp3            (audio only, straight to mp3)
+    $ yanker <url> --cookies c.txt  (use exported browser cookies, e.g. on a VPS)
+    $ yanker --cookies c.txt       (same, but use the picker — you can still
+                                    paste a link with tab)
     $ yanker --update-yt-dlp        (self-update the standalone yt-dlp)
 
   Options
     -o, --output <dir>  save files here (default ~/Videos)
+    --cookies <file>    use a Netscape-format cookies file (e.g. cookies.txt
+                        exported from your logged-in browser) for probing and
+                        downloads — the fix for “sign in to confirm you’re
+                        not a bot” on servers/VPSes without a browser
     --theme <mode>      auto, light, or dark
     -b, --best          grab the best format without the picker
     -m, --mp3           audio only, straight to mp3
@@ -51,6 +57,7 @@ function parseArgs(argv: string[]): {
   url?: string
   outDir: string
   theme?: 'auto' | 'light' | 'dark'
+  cookies?: string
   list: boolean
   best: boolean
   mp3: boolean
@@ -61,6 +68,7 @@ function parseArgs(argv: string[]): {
 } {
   let outDir = process.env.YANKER_OUT || path.join(os.homedir(), 'Videos')
   let theme: 'auto' | 'light' | 'dark' | undefined
+  let cookies: string | undefined
   let url: string | undefined
   let list = false
   let best = false
@@ -91,6 +99,14 @@ function parseArgs(argv: string[]): {
       i++
     } else if (arg.startsWith('-o') && arg.length > 2) {
       outDir = arg.slice(2)
+    } else if (arg === '--cookies') {
+      const next = argv[i + 1]
+      if (!next)
+        return { outDir, list, best, mp3, update, help, version, error: `missing value for ${arg}` }
+      cookies = next
+      i++
+    } else if (arg.startsWith('--cookies=')) {
+      cookies = arg.slice('--cookies='.length)
     } else if (arg === '--theme') {
       const next = argv[i + 1]
       if (next !== 'light' && next !== 'dark' && next !== 'auto') {
@@ -131,13 +147,17 @@ function parseArgs(argv: string[]): {
     }
   }
 
-  return { url, outDir, theme, list, best, mp3, update, help, version }
+  return { url, outDir, theme, cookies, list, best, mp3, update, help, version }
 }
 
 const args = parseArgs(process.argv.slice(2))
 
 if (args.error) {
   console.error(`yanker: ${args.error}\nTry “yanker --help” for usage.`)
+  process.exit(1)
+}
+if (args.cookies && !existsSync(args.cookies)) {
+  console.error(`yanker: cookies file not found: ${args.cookies}`)
   process.exit(1)
 }
 if (args.help) {
@@ -153,7 +173,7 @@ if (args.list && args.url) {
   const url = args.url
   console.log(`yanker: fetching ${url}…\n`)
   const ytdlp = await ensureYtDlp(() => {})
-  const { info } = await probe(ytdlp, url)
+  const { info } = await probe(ytdlp, url, undefined, { cookiesFile: args.cookies })
   const choices = buildChoices(info, args.outDir)
   console.log(`${info.title}`)
   console.log(
@@ -190,9 +210,17 @@ const MP3_CHOICE: DownloadChoice = {
   args: ['-f', 'ba/b', '-x', '--audio-format', 'mp3'],
 }
 
-async function headlessRun(cfg: { url: string; outDir: string; mp3: boolean }): Promise<void> {
+async function headlessRun(cfg: {
+  url: string
+  outDir: string
+  mp3: boolean
+  cookies?: string
+}): Promise<void> {
   const ytdlp = await ensureYtDlp(() => {})
-  const { info, playlist } = await probe(ytdlp, cfg.url, undefined, { flatPlaylist: true })
+  const { info, playlist } = await probe(ytdlp, cfg.url, undefined, {
+    flatPlaylist: true,
+    cookiesFile: cfg.cookies,
+  })
 
   let choice: DownloadChoice
   let yesPlaylist = false
@@ -214,7 +242,7 @@ async function headlessRun(cfg: { url: string; outDir: string; mp3: boolean }): 
   console.log(`yanker: grabbing ${title}…`)
   const ffmpegLocation = await findFfmpeg()
   const filepath = await download(
-    { ytdlp, ffmpegLocation, url: cfg.url, choice, outDir: cfg.outDir, yesPlaylist },
+    { ytdlp, ffmpegLocation, url: cfg.url, choice, outDir: cfg.outDir, yesPlaylist, cookiesFile: cfg.cookies },
     { onProgress: () => {}, onProcessing: () => {} },
   )
   console.log(
@@ -240,7 +268,7 @@ if (args.update) {
 
 if ((args.best || args.mp3 || !process.stdout.isTTY) && args.url) {
   try {
-    await headlessRun({ url: args.url, outDir: args.outDir, mp3: args.mp3 })
+    await headlessRun({ url: args.url, outDir: args.outDir, mp3: args.mp3, cookies: args.cookies })
   } catch (error) {
     console.error(`yanker: ${error instanceof Error ? error.message : String(error)}`)
     process.exit(1)
@@ -253,6 +281,22 @@ if (args.best || args.mp3) {
 }
 
 const isTTY = Boolean(process.stdout.isTTY)
+
+const NODE_MAJOR = Number(process.versions.node.split('.')[0] ?? 0)
+
+// Ink (and its dep tree, e.g. string-width) needs Node >=22. Loading it on an
+// older Node throws a cryptic SyntaxError from deep inside node_modules, so
+// check first and never even `import('ink')` unless the runtime is new enough.
+// `--help`/`--list`/`--mp3`/`--best`/`--update-yt-dlp` stay usable anywhere.
+function requireNode22(): boolean {
+  if (NODE_MAJOR >= 22) return true
+  console.error(
+    `yanker: requires Node.js >= 22 — you have ${process.version}.\n` +
+      '  Install the right version with nvm:  nvm install      (pinned in .nvmrc)\n' +
+      '  Then reinstall yanker:               npm i -g @dummy3ye/yanker',
+  )
+  return false
+}
 
 const enterAltScreen = () => process.stdout.write('\x1b[?1049h\x1b[H')
 const leaveAltScreen = () => process.stdout.write('\x1b[?1006l\x1b[?1000l\x1b[?1049l')
@@ -269,12 +313,25 @@ if (isTTY) {
   }
 }
 
+// Any path that reaches here would boot the interactive TUI (which loads
+// ink). Block old runtimes with a clear message instead of a SyntaxError.
+if (!requireNode22()) {
+  if (isTTY) leaveAltScreen()
+  process.exit(1)
+}
+
+// Loaded lazily so old Node runtimes get the friendly message above instead
+// of a SyntaxError from ink's dependency tree.
+const { render } = await import('ink')
+const { App } = await import('./app.js')
+
 let outcome = ''
 const { waitUntilExit } = render(
   <App
     initialUrl={args.url}
     initialThemeMode={args.theme}
     outDir={args.outDir}
+    cookiesFile={args.cookies}
     onOutcome={fp => (outcome = fp)}
   />,
 )

@@ -49,7 +49,16 @@ export function TextInput({
       onEmptyKey?.(input)
       return
     }
-    if (key.escape) return
+    if (key.escape) {
+      // non-empty field: esc is "back" — reset to the empty prompt so a
+      // subsequent esc/q can quit (otherwise esc is a dead key and letters
+      // like q get typed into the URL instead of exiting).
+      if (value !== '') {
+        setCursor(0)
+        onChange('')
+      }
+      return
+    }
 
     if (key.backspace) {
       // ctrl+h == 0x08, real backspace == 0x7f; Ink collapses both to
@@ -77,6 +86,8 @@ export function TextInput({
 
   const span = Math.max(8, width)
   const offset = Math.min(Math.max(0, value.length + 1 - span), cursor)
+  const maxLen = Math.max(0, value.length - offset + 1)
+  const renderLen = Math.min(span, maxLen)
 
   return (
     <Box width={span}>
@@ -86,7 +97,7 @@ export function TextInput({
           <Text color="#6b7280">{placeholder.slice(0, span - 1)}</Text>
         </>
       ) : (
-        Array.from({ length: Math.min(span, value.length - offset + 1) }, (_, column) => {
+        Array.from({ length: renderLen }, (_, column) => {
           const index = offset + column
           return (
             <Text key={index} inverse={index === cursor}>

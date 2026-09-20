@@ -127,5 +127,5 @@ When in doubt, mirror the style of the file you're touching.
 
 ## License
 
-By contributing you agree that your contributions are licensed under the
-[MIT License](LICENSE).
+By contributing you agree that your contributions are released into the
+public domain under the [Unlicense](LICENSE).

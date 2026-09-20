@@ -9,6 +9,26 @@ pull from YouTube, Vimeo, SoundCloud, Instagram, TikTok, X and other sites.
 
 ![yanker in action](https://raw.githubusercontent.com/dummy3ye/yanker/master/assets/showcase.gif)
 
+## Requirements
+
+- **Node.js ≥ 22** — the only hard requirement. Check yours with `node -v`.
+  - On the wrong version? `nvm install` picks up the version pinned in this
+    project's `.nvmrc` (currently `22`), then `nvm use`.
+  - Anything older — including the Node 18 that ships with Ubuntu 22.04 /
+    Debian 12 / RHEL 9 — is refused before the UI starts, with a message
+    telling you exactly that and how to fix it.
+- **yt-dlp** — *optional*. Used from your PATH if present; otherwise a
+  standalone build is auto-fetched to `~/.yanker/bin` on first run (no
+  Python needed). First run needs network access to `github.com` plus
+  write/execute permission in your home directory.
+- **ffmpeg** — *optional*. Used from your PATH when present, with
+  `ffmpeg-static` as a bundled fallback for merging and mp3 conversion. The
+  fallback downloads a ~30–80MB binary at install time, so offline installs
+  or `--ignore-scripts` need a system `ffmpeg` instead.
+- **Clipboard paste** — *optional*, only for Tab-paste in the URL field:
+  Linux needs `wl-paste` (Wayland) or `xclip`/`xsel` (X11), macOS uses
+  `pbpaste`, Windows uses PowerShell `Get-Clipboard`.
+
 ## Install
 
 ```sh
@@ -21,20 +41,8 @@ Or try it without installing anything:
 npx @dummy3ye/yanker
 ```
 
-Requires Node 22+. `yt-dlp` and `ffmpeg` on your system, and
-yanker bundles/re-fetches its own copies when they're missing:
-
-- `yt-dlp` — used if present, otherwise a standalone build is fetched to
-  `~/.yanker/bin` (no Python needed). First run needs network access to
-  `github.com` plus write/execute permission in your home directory.
-- `ffmpeg` — used from your PATH, with `ffmpeg-static` as a bundled fallback
-  for merging and mp3 conversion. The fallback downloads a ~30–80MB binary
-  at install time, so offline installs or `--ignore-scripts` need a system
-  `ffmpeg` instead.
-
-Clipboard paste (Tab / auto-suggest) needs a system helper, not bundled:
-Linux needs `wl-paste` (Wayland) or `xclip`/`xsel` (X11), macOS uses
-`pbpaste`, Windows uses PowerShell `Get-Clipboard`.
+The interactive TUI requires a TTY. On non-TTY terminals (scripts, ssh
+pipes), pass a URL with `--best` / `--mp3` / `--list` for headless output.
 
 ## Usage
 
@@ -45,6 +53,7 @@ yanker <url> --list                      # print every format + estimated size
 yanker <url> --best                      # grab the best format, no picker
 yanker <url> --mp3                       # audio only, straight to mp3
 yanker <url> -o ~/clips                  # save somewhere else
+yanker <url> --cookies cookies.txt       # use exported browser cookies (see below)
 yanker --theme light                     # force the light palette
 yanker --update-yt-dlp                   # self-update the standalone yt-dlp
 ```
@@ -53,6 +62,33 @@ yanker --update-yt-dlp                   # self-update the standalone yt-dlp
 codec, container, bitrate and estimated file size, best options first. Pick
 one with `↑`/`↓`, hit enter, and watch it fly. Files land in `~/Videos`
 otherwise, and the saved path is printed when you're finished.
+
+### Cookies (bot-checks & servers)
+
+YouTube starts answering every request with *"Sign in to confirm you're not
+a bot"* the moment it can't see your browser — which is exactly what happens
+on a VPS, Docker, or any box without Chrome/Firefox on it. That's what
+`--cookies` is for: hand yanker your real logged-in session and the wall
+comes down.
+
+**Get the cookies.** In the browser you actually use for YouTube, export
+them to a Netscape-format file — Chrome: *Get cookies.txt LOCALLY*
+extension; Firefox: *cookies.txt* extension. Move it over, then:
+
+```sh
+scp cookies.txt root@your-vps:/root/
+
+yanker <url> --cookies /root/cookies.txt   # one-off
+yanker --cookies /root/cookies.txt         # or set it once and use the picker
+```
+
+The cookies go to work **both** while fetching video info and while
+downloading. When a file is given, it's the only cookie source — yanker
+skips its automatic browser-cookie fallbacks and trusts the file.
+
+Treat it like a password, because it is one: the file is a full login
+session. Keep it private, and re-export it whenever YouTube expires the
+session and the bot wall comes back.
 
 Playlists are detected automatically — the picker offers "grab all"
 (best or mp3) or "first video only" to walk through the format list of
@@ -84,11 +120,12 @@ dark, without guessing.
 ## Development
 
 ```sh
+nvm use                # switch to the pinned Node version (see .nvmrc)
 npm install
-npm run build        # bundle with tsup to dist/
-npm run dev          # rebuild on change
-npm run typecheck    # tsc --noEmit
-npm run link         # rebuild + npm link for global `yanker`
+npm run build          # bundle with tsup to dist/
+npm run dev            # rebuild on change
+npm run typecheck      # tsc --noEmit
+npm run link           # rebuild + npm link for global `yanker`
 ```
 
 Stack: TypeScript, [Ink](https://github.com/vadimdemedes/ink) (React for
@@ -102,4 +139,4 @@ support the people who make what you save.
 
 ## License
 
-[MIT](LICENSE)
+[Unlicense](LICENSE)

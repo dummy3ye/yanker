@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
 import { useStdin } from 'ink'
 
+/** Raw char from the last keypress, before Ink normalizes it. */
 let lastRawKey = ''
 
-/** Raw char from the last keypress, before Ink normalizes it. */
 export function getLastRawKey(): string {
   return lastRawKey
 }
@@ -22,7 +22,9 @@ export function useRawKeyMonitor(): void {
     }
     const onData = (chunk: Buffer) => {
       const bytes = chunk as Buffer
-      lastRawKey = String.fromCharCode(bytes[bytes.length - 1])
+      if (bytes.length > 0) {
+        lastRawKey = String.fromCharCode(bytes[bytes.length - 1])
+      }
     }
     stdin.prependListener('data', onData)
     return () => {
