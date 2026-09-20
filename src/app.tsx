@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Box, Text, useApp, useInput } from 'ink'
-import SelectInput, { type IndicatorProps, type ItemProps } from 'ink-select-input'
+import { Picker } from './components/picker.js'
 import Spinner from 'ink-spinner'
 import os from 'node:os'
 import path from 'node:path'
@@ -362,13 +362,7 @@ onCtrlH={() => {
                   {phase.meta.count} videos
                 </Text>
                 <Box marginTop={1} />
-                <SelectInput
-                  indicatorComponent={Indicator}
-                  itemComponent={Item}
-                  items={PLAYLIST_ITEMS}
-                  onSelect={onPlaylistSelect(phase.meta)}
-                  limit={3}
-                />
+                <Picker items={PLAYLIST_ITEMS} onSelect={onPlaylistSelect(phase.meta)} limit={3} />
               </Box>
             </Box>
             <Shortcuts
@@ -405,9 +399,7 @@ onCtrlH={() => {
                 </Text>
               </Box>
               <Box width={52} borderStyle="round" borderColor="#4b5563" paddingX={1} paddingY={1}>
-                <SelectInput
-                  indicatorComponent={Indicator}
-                  itemComponent={Item}
+                <Picker
                   items={choices.map((choice, index) => ({
                     key: String(index),
                     label: choiceLabel(choice),
@@ -617,22 +609,6 @@ const choiceLabel = (choice: DownloadChoice) => {
   const icon = choice.kind === 'audio' ? '♪ ' : '▶ '
   const detail = choice.detail ? `\n        ${choice.detail}` : ''
   return `${icon}${choice.label}${detail}`
-}
-
-function Indicator({ isSelected }: IndicatorProps) {
-  return (
-    <Box marginRight={1}>
-      <Text color={isSelected ? '#a78bfa' : undefined}>{isSelected ? '❯' : ' '}</Text>
-    </Box>
-  )
-}
-
-function Item({ isSelected, label }: ItemProps) {
-  return (
-    <Text color={isSelected ? '#a78bfa' : '#d1d5db'} bold={isSelected}>
-      {label}
-    </Text>
-  )
 }
 
 function downloadMeta(progress: DownloadProgress): string {
