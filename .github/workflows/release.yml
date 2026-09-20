@@ -37,11 +37,11 @@ jobs:
       - name: publish to GitHub Packages
         run: |
           PKG="@dummy3ye/yanker"
+          npm config set //npm.pkg.github.com/:_authToken "$GHP_TOKEN"
           LOCAL_VER="$(node -p "require('./package.json').version")"
           if npm view "$PKG" versions --registry=https://npm.pkg.github.com --json 2>/dev/null | grep -q "\"$LOCAL_VER\""; then
             echo "v$LOCAL_VER already on GitHub Packages — skipping"
           else
-            npm config set //npm.pkg.github.com/:_authToken "$GHP_TOKEN"
             npm publish --registry=https://npm.pkg.github.com --access public
           fi
         env:
