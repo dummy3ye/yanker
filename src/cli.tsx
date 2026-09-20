@@ -1,6 +1,8 @@
 import React from 'react'
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
+import os from 'node:os'
+import path from 'node:path'
 import { render } from 'ink'
 import { App } from './app.js'
 import {
@@ -57,7 +59,7 @@ function parseArgs(argv: string[]): {
   version: boolean
   error?: string
 } {
-  let outDir = process.env.YANKER_OUT || path_home('Videos')
+  let outDir = process.env.YANKER_OUT || path.join(os.homedir(), 'Videos')
   let theme: 'auto' | 'light' | 'dark' | undefined
   let url: string | undefined
   let list = false
@@ -130,10 +132,6 @@ function parseArgs(argv: string[]): {
   }
 
   return { url, outDir, theme, list, best, mp3, update, help, version }
-}
-
-function path_home(rel: string): string {
-  return `${process.env.HOME ?? ''}/${rel}`
 }
 
 const args = parseArgs(process.argv.slice(2))
