@@ -21,13 +21,20 @@ Or try it without installing anything:
 npx @dummy3ye/yanker
 ```
 
-Requires Node 18+. `yt-dlp` and `ffmpeg` on your system, and
+Requires Node 22+. `yt-dlp` and `ffmpeg` on your system, and
 yanker bundles/re-fetches its own copies when they're missing:
 
 - `yt-dlp` — used if present, otherwise a standalone build is fetched to
-  `~/.yanker/bin` (no Python needed)
+  `~/.yanker/bin` (no Python needed). First run needs network access to
+  `github.com` plus write/execute permission in your home directory.
 - `ffmpeg` — used from your PATH, with `ffmpeg-static` as a bundled fallback
-  for merging and mp3 conversion
+  for merging and mp3 conversion. The fallback downloads a ~30–80MB binary
+  at install time, so offline installs or `--ignore-scripts` need a system
+  `ffmpeg` instead.
+
+Clipboard paste (Tab / auto-suggest) needs a system helper, not bundled:
+Linux needs `wl-paste` (Wayland) or `xclip`/`xsel` (X11), macOS uses
+`pbpaste`, Windows uses PowerShell `Get-Clipboard`.
 
 ## Usage
 

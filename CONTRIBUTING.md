@@ -28,7 +28,7 @@ For a bug report, the most useful things you can include are:
 
 ## Development setup
 
-Prerequisites: **Node 18+** and npm.
+Prerequisites: **Node 22+** and npm.
 
 ```sh
 npm install
