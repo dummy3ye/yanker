@@ -28,3 +28,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+      # Publish the just-released version to GitHub Packages as well.
+      # This lives here (not in a tag-triggered workflow) because tags
+      # pushed by semantic-release use GITHUB_TOKEN, which never starts
+      # new workflow runs — publish.yml on tags could never fire.
+      # The workspace package.json already carries the released version
+      # at this point; on no-release runs the guard below skips.
+      - name: publish to GitHub Packages
+        run: |
+          PKG="@dummy3ye/yanker"
+          LOCAL_VER="$(node -p "require('./package.json').version")"
+          if npm view "$PKG" versions --registry=https://npm.pkg.github.com --json 2>/dev/null | grep -q "\"$LOCAL_VER\""; then
+            echo "v$LOCAL_VER already on GitHub Packages — skipping"
+          else
+            npm config set //npm.pkg.github.com/:_authToken "$GHP_TOKEN"
+            npm publish --registry=https://npm.pkg.github.com --access public
+          fi
+        env:
+          GHP_TOKEN: ${{ secrets.GITHUB_TOKEN }}
