@@ -126,6 +126,7 @@ npm run build          # bundle with tsup to dist/
 npm run dev            # rebuild on change
 npm run typecheck      # tsc --noEmit
 npm run link           # rebuild + npm link for global `yanker`
+npm run unlink yanker  # to unlink the global command
 ```
 
 Stack: TypeScript, [Ink](https://github.com/vadimdemedes/ink) (React for
