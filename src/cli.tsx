@@ -13,6 +13,7 @@ import {
   type DownloadChoice,
 } from './lib/ytdlp.js'
 import { formatBytes, formatDuration } from './lib/format.js'
+import { getInitialOutDir } from './lib/config.js'
 
 const VERSION: string = createRequire(import.meta.url)('../package.json').version
 
@@ -35,7 +36,8 @@ const HELP = `
     $ yanker --update-yt-dlp        (self-update the standalone yt-dlp)
 
   Options
-    -o, --output <dir>  save files here (default ~/Videos)
+    -o, --output <dir>  save files here (default ~/Videos, remembers last
+                        location — change anytime in TUI with o / ^o)
     --cookies <file>    use a Netscape-format cookies file (e.g. cookies.txt
                         exported from your logged-in browser) for probing and
                         downloads — the fix for “sign in to confirm you’re
@@ -49,7 +51,8 @@ const HELP = `
     -v, --version       show version
 
   Playlists are detected automatically — the picker offers “grab all”.
-  Downloads are saved to ~/Videos by default.
+  Press o (or ^o while typing) in the TUI to change where files are saved.
+  Downloads are saved to ~/Videos by default (or last chosen folder).
   Powered by yt-dlp + ffmpeg.
 `
 
@@ -150,7 +153,13 @@ function parseArgs(argv: string[]): {
   return { url, outDir, theme, cookies, list, best, mp3, update, help, version }
 }
 
-const args = parseArgs(process.argv.slice(2))
+const rawArgv = process.argv.slice(2)
+const args = parseArgs(rawArgv)
+const hasOutputFlag =
+  rawArgv.some(a => a === '-o' || a === '--output' || a.startsWith('--output=') || (a.startsWith('-o') && a.length > 2))
+if (!hasOutputFlag) {
+  args.outDir = getInitialOutDir(args.outDir, false)
+}
 
 if (args.error) {
   console.error(`yanker: ${args.error}\nTry “yanker --help” for usage.`)

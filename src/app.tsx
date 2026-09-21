@@ -30,6 +30,8 @@ import {
 } from './lib/ytdlp.js'
 import { getTheme, nextThemeMode, type Theme, type ThemeMode } from './theme.js'
 import { getLastRawKey, useRawKeyMonitor } from './lib/keys.js'
+import { completePath, resolveOutputPath, saveConfig, shortenForDisplay } from './lib/config.js'
+import fs from 'node:fs/promises'
 
 export type AppProps = {
   initialUrl?: string
@@ -52,6 +54,7 @@ type Phase =
       processing: boolean
     }
   | { name: 'done'; filepath: string }
+  | { name: 'output'; draft: string; error?: string }
   | { name: 'help' }
   | { name: 'error'; message: string }
 
@@ -77,6 +80,7 @@ const PLAYLIST_ITEMS = [
 
 export function App(props: AppProps) {
   const [themeMode, setThemeMode] = useState<ThemeMode>(props.initialThemeMode ?? 'auto')
+  const [outDir, setOutDir] = useState(props.outDir)
   const [url, setUrl] = useState(props.initialUrl ?? '')
   const [urlInput, setUrlInput] = useState('')
   const [clipboardUrl, setClipboardUrl] = useState<string | undefined>(undefined)
@@ -95,6 +99,29 @@ export function App(props: AppProps) {
 
   const theme = getTheme(themeMode)
   const cycleTheme = () => setThemeMode(m => nextThemeMode(m))
+
+  const openOutput = () => {
+    previousPhaseRef.current = phase
+    setPhase({ name: 'output', draft: outDir })
+  }
+  const submitOutput = async (raw: string) => {
+    const trimmed = raw.trim() || outDir
+    let resolved: string
+    try {
+      resolved = resolveOutputPath(trimmed)
+      await fs.mkdir(resolved, { recursive: true })
+    } catch (e) {
+      setPhase({ name: 'output', draft: raw, error: e instanceof Error ? e.message : String(e) })
+      return
+    }
+    setOutDir(resolved)
+    void saveConfig({ lastOutDir: resolved }).catch(() => {})
+    setPhase(previousPhaseRef.current ?? { name: 'input' })
+  }
+  const completeOutputDraft = (draft: string) => {
+    const completed = completePath(draft)
+    if (completed !== draft) setPhase({ name: 'output', draft: completed })
+  }
 
   const reset = () => {
     setUrl('')
@@ -129,7 +156,7 @@ export function App(props: AppProps) {
         setPhase({ name: 'playlist', meta: playlist })
         return
       }
-      choicesRef.current = buildChoices(info, props.outDir)
+      choicesRef.current = buildChoices(info, outDir)
       chooseRef.current = 0
       setPhase({ name: 'picking' })
     } catch (error) {
@@ -176,7 +203,7 @@ export function App(props: AppProps) {
             url,
             infoJsonPath: yesPlaylist ? undefined : infoJsonRef.current,
             choice,
-            outDir: props.outDir,
+            outDir: outDir,
             yesPlaylist,
             cookiesFile: props.cookiesFile,
           },
@@ -184,7 +211,7 @@ export function App(props: AppProps) {
           controller.signal,
         )
         await new Promise(resolve => setTimeout(resolve, 400))
-        const reported = yesPlaylist ? props.outDir : filepath
+        const reported = yesPlaylist ? outDir : filepath
         props.onOutcome(reported)
         setPhase({ name: 'done', filepath: reported })
       } catch (error) {
@@ -209,7 +236,7 @@ export function App(props: AppProps) {
       setUrl(firstUrl ?? '')
       infoJsonRef.current = infoJsonPath
       infoRef.current = info
-      choicesRef.current = buildChoices(info, props.outDir)
+      choicesRef.current = buildChoices(info, outDir)
       chooseRef.current = 0
       setPhase({ name: 'picking' })
     } catch (error) {
@@ -226,6 +253,26 @@ export function App(props: AppProps) {
 
   useInput(
     (input, key) => {
+      if (phase.name === 'output') {
+        if (key.escape) {
+          setPhase(previousPhaseRef.current ?? { name: 'input' })
+          return
+        }
+        if (key.tab) {
+          const draft = (phase as { draft: string }).draft
+          completeOutputDraft(draft)
+          return
+        }
+        return
+      }
+      if (key.ctrl && input === 'o') {
+        openOutput()
+        return
+      }
+      if (input === 'o' && phase.name !== 'input' && phase.name !== 'probing' && phase.name !== 'downloading') {
+        openOutput()
+        return
+      }
       if (key.ctrl && input === 't') {
         cycleTheme()
         return
@@ -254,7 +301,7 @@ export function App(props: AppProps) {
       if (key.escape && (phase.name === 'probing' || phase.name === 'downloading')) cancel()
       if (key.return && phase.name === 'error') reset()
     },
-    { isActive: Boolean(process.stdin.isTTY) && !['input', 'probing'].includes(phase.name) },
+    { isActive: Boolean(process.stdin.isTTY) && (phase.name === 'output' || !['input', 'probing'].includes(phase.name)) },
   )
 
   const handleUrlSubmit = (value: string) => {
@@ -299,16 +346,25 @@ export function App(props: AppProps) {
                   if (v !== clipboardUrl) setClipboardUrl(undefined)
                 }}
                 onSubmit={handleUrlSubmit}
-                onEmptyKey={() => exit()}
+                onEmptyKey={input => {
+                  if (input === 'o') openOutput()
+                  else exit()
+                }}
                 onCtrlH={() => {
                   previousPhaseRef.current = phase
                   setPhase({ name: 'help' })
                 }}
                 onTab={handlePasteFromClipboard}
+                onCtrlO={openOutput}
                 placeholder="https://youtube.com/watch?v=…"
                 width={44}
               />
               {clipboardUrl ? <Text color={themeProxy.primary}>pasted from clipboard</Text> : null}
+              <Box marginTop={1}>
+                <Text color={themeProxy.gray} dimColor={themeProxy.dim}>
+                  saving to <Text color={themeProxy.primary}>{shortenForDisplay(outDir)}</Text>
+                </Text>
+              </Box>
             </Box>
             <Shortcuts
               theme={themeProxy}
@@ -317,12 +373,14 @@ export function App(props: AppProps) {
                   ? [
                       ['↵', 'download'],
                       ['⇥', 'paste'],
+                      ['o', 'output'],
                       ['q', 'quit'],
                       ['^h', 'help'],
                     ]
                   : [
                       ['↵', 'download'],
                       ['⇥', 'paste'],
+                      ['^o', 'output'],
                       ['^c', 'quit'],
                       ['^h', 'help'],
                     ]
@@ -373,6 +431,7 @@ export function App(props: AppProps) {
               items={[
                 ['↑↓', 'choose'],
                 ['↵', 'grab'],
+                ['o', 'output'],
                 ['esc', 'back'],
                 ['^h', 'help'],
                 ['^c', 'quit'],
@@ -396,6 +455,9 @@ export function App(props: AppProps) {
                 <Text color={themeProxy.gray} dimColor={themeProxy.dim}>
                   {choices.filter(c => c.kind === 'video').length} video ·{' '}
                   {choices.filter(c => c.kind === 'audio').length} audio
+                </Text>
+                <Text color={themeProxy.gray} dimColor={themeProxy.dim}>
+                  saving to {shortenForDisplay(outDir)}
                 </Text>
                 <Text color={themeProxy.gray} dimColor={themeProxy.dim}>
                   sizes are estimates from yt-dlp
@@ -422,6 +484,7 @@ export function App(props: AppProps) {
               items={[
                 ['↑↓', 'choose'],
                 ['↵', 'download'],
+                ['o', 'output'],
                 ['esc', 'back'],
                 ['^h', 'help'],
                 ['^t', 'theme'],
@@ -507,6 +570,7 @@ export function App(props: AppProps) {
               theme={themeProxy}
               items={[
                 ['esc', 'another'],
+                ['o', 'output'],
                 ['^h', 'help'],
                 ['^c', 'quit'],
               ]}
@@ -583,6 +647,54 @@ export function App(props: AppProps) {
               theme={themeProxy}
               items={[
                 ['esc', 'back'],
+                ['^c', 'quit'],
+              ]}
+            />
+          </>
+        )}
+
+{phase.name === 'output' && (
+          <>
+            <Box
+              flexDirection="column"
+              alignItems="center"
+              borderStyle="round"
+              borderColor="#4b5563"
+              paddingX={2}
+              paddingY={1}
+              width={64}
+            >
+              <Text bold color={themeProxy.primary}>output folder</Text>
+              <Text color={themeProxy.gray} dimColor={themeProxy.dim}>
+                where videos will be saved — tab completes, enter saves
+              </Text>
+              <Box marginTop={1} />
+              <TextInput
+                value={(phase as { draft: string }).draft}
+                onChange={v => setPhase({ name: 'output', draft: v })}
+                onSubmit={v => void submitOutput(v)}
+                onTab={() => completeOutputDraft((phase as { draft: string }).draft)}
+                onCtrlO={() => {}}
+                placeholder={outDir}
+                width={52}
+              />
+              {(phase as { error?: string }).error ? (
+                <Box marginTop={1}>
+                  <Text color="#f87171">{(phase as { error?: string }).error}</Text>
+                </Box>
+              ) : null}
+              <Box marginTop={1}>
+                <Text color={themeProxy.gray} dimColor={themeProxy.dim}>
+                  current: {shortenForDisplay(outDir)}
+                </Text>
+              </Box>
+            </Box>
+            <Shortcuts
+              theme={themeProxy}
+              items={[
+                ['↵', 'save'],
+                ['⇥', 'complete'],
+                ['esc', 'cancel'],
                 ['^c', 'quit'],
               ]}
             />

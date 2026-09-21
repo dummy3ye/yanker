@@ -267,7 +267,7 @@ function shortCodec(f: RawFormat): string {
  * every video stream (merged with the best audio), and every audio stream —
  * each with an estimated size.
  */
-export function buildChoices(info: VideoInfo): DownloadChoice[] {
+export function buildChoices(info: VideoInfo, _outDir?: string): DownloadChoice[] {
   const formats = (info.formats ?? []).filter(isUsable)
   const duration = info.duration
   const audioOnly = formats

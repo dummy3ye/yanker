@@ -14,6 +14,8 @@ type Props = {
   onCtrlH?: () => void
   /** tab — paste the clipboard value into the field */
   onTab?: () => void
+  /** ctrl+o while the input is focused — change output dir */
+  onCtrlO?: () => void
 }
 
 /** Single-line editor: type, ⌫, ←/→, ^a/^e, ^u, ↵ submits. */
@@ -26,6 +28,7 @@ export function TextInput({
   onEmptyKey,
   onCtrlH,
   onTab,
+  onCtrlO,
 }: Props) {
   const [cursor, setCursor] = useState(value.length)
 
@@ -41,11 +44,15 @@ export function TextInput({
       onSubmit?.(value)
       return
     }
+    if (key.ctrl && input === 'o' && onCtrlO) {
+      onCtrlO()
+      return
+    }
     if (key.tab || key.pageUp || key.pageDown || key.upArrow || key.downArrow) {
       if (key.tab) onTab?.()
       return
     }
-    if (value === '' && (input === 'q' || key.escape)) {
+    if (value === '' && (input === 'q' || input === 'o' || key.escape)) {
       onEmptyKey?.(input)
       return
     }
