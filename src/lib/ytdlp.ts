@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { createWriteStream } from 'node:fs'
 import fs from 'node:fs/promises'
+import type { AddressInfo } from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { Readable } from 'node:stream'
@@ -129,35 +130,43 @@ let potServerChild: ChildProcess | undefined
 let potServerPort: number | undefined
 
 export async function ensurePotServer(): Promise<number | undefined> {
-  if (potServerPort) return potServerPort;
+  if (potServerPort) return potServerPort
 
-  const serverFile = path.join(os.homedir(), '.yanker', 'pot-provider', 'server', 'build', 'main.js');
+  const serverFile = path.join(
+    os.homedir(),
+    '.yanker',
+    'pot-provider',
+    'server',
+    'build',
+    'main.js',
+  )
   try {
-    await fs.access(serverFile);
+    await fs.access(serverFile)
   } catch {
-    return undefined;
+    return undefined
   }
 
   const port = await new Promise<number>((resolve, reject) => {
     import('node:net').then(net => {
-      const srv = net.createServer();
+      const srv = net.createServer()
       srv.listen(0, '127.0.0.1', () => {
-        const p = (srv.address() as any).port;
-        srv.close(() => resolve(p));
-      });
-      srv.on('error', reject);
-    });
-  });
+        const addr = srv.address() as AddressInfo | null
+        const p = addr?.port ?? 0
+        srv.close(() => resolve(p))
+      })
+      srv.on('error', reject)
+    })
+  })
 
   potServerChild = spawn(process.execPath, [serverFile, '-p', port.toString()], {
     stdio: 'ignore',
-    detached: false
-  });
-  
-  potServerChild.unref();
-  await new Promise(r => setTimeout(r, 500));
-  potServerPort = port;
-  return port;
+    detached: false,
+  })
+
+  potServerChild.unref()
+  await new Promise(r => setTimeout(r, 500))
+  potServerPort = port
+  return port
 }
 
 export async function probe(
@@ -167,13 +176,13 @@ export async function probe(
   opts?: ProbeOptions,
 ): Promise<ProbeResult> {
   const args = ['-J', '--no-warnings']
-  
-  const sleep = process.env.YANKER_SLEEP_REQUESTS || '1';
-  if (sleep !== '0') args.push('--sleep-requests', sleep);
 
-  const potPort = await ensurePotServer();
+  const sleep = process.env.YANKER_SLEEP_REQUESTS || '1'
+  if (sleep !== '0') args.push('--sleep-requests', sleep)
+
+  const potPort = await ensurePotServer()
   if (potPort) {
-    args.push('--extractor-args', `youtubepot-bgutilhttp:base_url=http://127.0.0.1:${potPort}`);
+    args.push('--extractor-args', `youtubepot-bgutilhttp:base_url=http://127.0.0.1:${potPort}`)
   }
 
   if (opts?.cookiesFile) args.push('--cookies', opts.cookiesFile)
@@ -258,7 +267,7 @@ function shortCodec(f: RawFormat): string {
  * every video stream (merged with the best audio), and every audio stream —
  * each with an estimated size.
  */
-export function buildChoices(info: VideoInfo, outDir?: string): DownloadChoice[] {
+export function buildChoices(info: VideoInfo): DownloadChoice[] {
   const formats = (info.formats ?? []).filter(isUsable)
   const duration = info.duration
   const audioOnly = formats
@@ -279,7 +288,11 @@ export function buildChoices(info: VideoInfo, outDir?: string): DownloadChoice[]
 
   // automatic best
   if (bestVideo || bestAudio) {
-    const size = bestVideo ? mergedSize(bestVideo, bestAudio) : estimatedSize(bestAudio!, duration)
+    const size = bestVideo
+      ? mergedSize(bestVideo, bestAudio)
+      : bestAudio
+        ? estimatedSize(bestAudio, duration)
+        : undefined
     choices.push({
       kind: 'video',
       detail: `best available${sizeLabel(size)}`,
@@ -368,9 +381,7 @@ async function browserHasCookies(name: string): Promise<boolean> {
 
 /** Return list of browser names (yt-dlp compatible) that have cookie stores present. */
 async function getAvailableBrowsersWithCookies(): Promise<string[]> {
-  const candidates = [
-    'chrome', 'firefox', 'safari', 'edge', 'brave', 'vivaldi', 'opera',
-  ] as const
+  const candidates = ['chrome', 'firefox', 'safari', 'edge', 'brave', 'vivaldi', 'opera'] as const
   const available: string[] = []
   for (const b of candidates) {
     if (await browserHasCookies(b)) available.push(b)
@@ -415,8 +426,7 @@ const impersonateBroken = new Set<string>()
 const impersonateArgs = (ytdlp: string): string[] =>
   impersonateBroken.has(ytdlp) ? [] : ['--impersonate', 'chrome']
 
-const isImpersonateError = (text: string): boolean =>
-  /impersonat|curl.?cffi/i.test(text)
+const isImpersonateError = (text: string): boolean => /impersonat|curl.?cffi/i.test(text)
 
 const isCookieError = (text: string): boolean =>
   /could not copy|cookie.*(lock|database)|decrypt.*cookie|keyring/i.test(text)
@@ -472,21 +482,18 @@ export function download(
     { choice: opts.choice, label: 'plain (fresh)' },
   ]
   const attemptErrors: Array<{ label: string; error: string }> = []
-  if (opts.ffmpegLocation === undefined) {
-    // merge-capable config exists on disk, but yt-dlp may already have used the
-    // probed URLs — a fresh extraction with cookies is the strongest retry
-  }
 
   const cookieArgs = opts.cookiesFile ? ['--cookies', opts.cookiesFile] : []
 
   async function runAttempt(index: number): Promise<string> {
     const attempt = attempts[index]
-    const sleep = process.env.YANKER_SLEEP_REQUESTS || '1';
-    const potArgs: string[] = [];
-    if (sleep !== '0') potArgs.push('--sleep-requests', sleep);
-    const potPort = await ensurePotServer();
-    if (potPort) potArgs.push('--extractor-args', `youtubepot-bgutilhttp:base_url=http://127.0.0.1:${potPort}`);
-    
+    const sleep = process.env.YANKER_SLEEP_REQUESTS || '1'
+    const potArgs: string[] = []
+    if (sleep !== '0') potArgs.push('--sleep-requests', sleep)
+    const potPort = await ensurePotServer()
+    if (potPort)
+      potArgs.push('--extractor-args', `youtubepot-bgutilhttp:base_url=http://127.0.0.1:${potPort}`)
+
     const args = [
       ...(attempt.infoJson ? ['--load-info-json', attempt.infoJson] : [opts.url]),
       ...potArgs,
@@ -664,12 +671,13 @@ async function until_chrome_fallback(
   if (!(await browserHasCookies('chrome'))) {
     return { error: 'Download failed — YouTube is blocking this connection.' }
   }
-  
-  const sleep = process.env.YANKER_SLEEP_REQUESTS || '1';
-  const potArgs: string[] = [];
-  if (sleep !== '0') potArgs.push('--sleep-requests', sleep);
-  const potPort = await ensurePotServer();
-  if (potPort) potArgs.push('--extractor-args', `youtubepot-bgutilhttp:base_url=http://127.0.0.1:${potPort}`);
+
+  const sleep = process.env.YANKER_SLEEP_REQUESTS || '1'
+  const potArgs: string[] = []
+  if (sleep !== '0') potArgs.push('--sleep-requests', sleep)
+  const potPort = await ensurePotServer()
+  if (potPort)
+    potArgs.push('--extractor-args', `youtubepot-bgutilhttp:base_url=http://127.0.0.1:${potPort}`)
 
   const args = [
     opts.url,
@@ -742,22 +750,13 @@ export function cleanYtDlpError(stderr: string): string {
   if (!last) return ''
   let text = last.replace(/^ERROR:\s*(\[[^\]]+\]\s*)?/, '')
 
-  // yt-dlp's canned failure blobs are verbose multi-line wallpapers of
-  // text; swap the well-known ones for a one-liner so the error screen
-  // stays readable even on narrow terminals.
   const oneLiners: Array<[RegExp, string]> = [
     [
       /Sign in to confirm you're not a bot.*/i,
       "Sign in to confirm you're not a bot — this connection is blocked.",
     ],
-    [
-      /Requested format is not available.*/i,
-      'Requested format is not available.',
-    ],
-    [
-      /HTTP Error 403: Forbidden.*/i,
-      'Stream blocked (HTTP 403) — often IP-level throttling.',
-    ],
+    [/Requested format is not available.*/i, 'Requested format is not available.'],
+    [/HTTP Error 403: Forbidden.*/i, 'Stream blocked (HTTP 403) — often IP-level throttling.'],
   ]
   for (const [pattern, replacement] of oneLiners) {
     if (pattern.test(text)) {
