@@ -105,7 +105,7 @@ your clipboard — if it looks like a link it lands right in the field.
 | `q`     | quit (when the field is empty)   |
 | `^c`    | quit                             |
 | `^t`    | cycle theme: auto → light → dark |
-
+| `Ctrl+o`| open output dir                  |
 The `auto` theme follows your terminal's own foreground/background, light or
 dark, without guessing.
 
