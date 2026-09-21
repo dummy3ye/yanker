@@ -125,6 +125,41 @@ export type ProbeOptions = {
   cookiesFile?: string
 }
 
+let potServerChild: ChildProcess | undefined
+let potServerPort: number | undefined
+
+export async function ensurePotServer(): Promise<number | undefined> {
+  if (potServerPort) return potServerPort;
+
+  const serverFile = path.join(os.homedir(), '.yanker', 'pot-provider', 'server', 'build', 'main.js');
+  try {
+    await fs.access(serverFile);
+  } catch {
+    return undefined;
+  }
+
+  const port = await new Promise<number>((resolve, reject) => {
+    import('node:net').then(net => {
+      const srv = net.createServer();
+      srv.listen(0, '127.0.0.1', () => {
+        const p = (srv.address() as any).port;
+        srv.close(() => resolve(p));
+      });
+      srv.on('error', reject);
+    });
+  });
+
+  potServerChild = spawn(process.execPath, [serverFile, '-p', port.toString()], {
+    stdio: 'ignore',
+    detached: false
+  });
+  
+  potServerChild.unref();
+  await new Promise(r => setTimeout(r, 500));
+  potServerPort = port;
+  return port;
+}
+
 export async function probe(
   ytdlp: string,
   url: string,
@@ -132,6 +167,15 @@ export async function probe(
   opts?: ProbeOptions,
 ): Promise<ProbeResult> {
   const args = ['-J', '--no-warnings']
+  
+  const sleep = process.env.YANKER_SLEEP_REQUESTS || '1';
+  if (sleep !== '0') args.push('--sleep-requests', sleep);
+
+  const potPort = await ensurePotServer();
+  if (potPort) {
+    args.push('--extractor-args', `youtubepot-bgutilhttp:base_url=http://127.0.0.1:${potPort}`);
+  }
+
   if (opts?.cookiesFile) args.push('--cookies', opts.cookiesFile)
   if (opts?.flatPlaylist) {
     args.push('--flat-playlist')
@@ -352,7 +396,10 @@ const PROGRESS_PREFIX = 'YANK|'
 const PROGRESS_TEMPLATE = `${PROGRESS_PREFIX}%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s`
 
 let activeChild: ChildProcess | undefined
-process.on('exit', () => activeChild?.kill('SIGTERM'))
+process.on('exit', () => {
+  activeChild?.kill('SIGTERM')
+  potServerChild?.kill('SIGTERM')
+})
 
 function resolveFfmpeg(ffmpegLocation: string | undefined): string[] {
   return ffmpegLocation ? ['--ffmpeg-location', ffmpegLocation] : []
@@ -434,8 +481,15 @@ export function download(
 
   async function runAttempt(index: number): Promise<string> {
     const attempt = attempts[index]
+    const sleep = process.env.YANKER_SLEEP_REQUESTS || '1';
+    const potArgs: string[] = [];
+    if (sleep !== '0') potArgs.push('--sleep-requests', sleep);
+    const potPort = await ensurePotServer();
+    if (potPort) potArgs.push('--extractor-args', `youtubepot-bgutilhttp:base_url=http://127.0.0.1:${potPort}`);
+    
     const args = [
       ...(attempt.infoJson ? ['--load-info-json', attempt.infoJson] : [opts.url]),
+      ...potArgs,
       ...playlistFlag(opts),
       ...cookieArgs,
       ...attempt.choice.args,
@@ -610,8 +664,16 @@ async function until_chrome_fallback(
   if (!(await browserHasCookies('chrome'))) {
     return { error: 'Download failed — YouTube is blocking this connection.' }
   }
+  
+  const sleep = process.env.YANKER_SLEEP_REQUESTS || '1';
+  const potArgs: string[] = [];
+  if (sleep !== '0') potArgs.push('--sleep-requests', sleep);
+  const potPort = await ensurePotServer();
+  if (potPort) potArgs.push('--extractor-args', `youtubepot-bgutilhttp:base_url=http://127.0.0.1:${potPort}`);
+
   const args = [
     opts.url,
+    ...potArgs,
     ...playlistFlag(opts),
     ...choice.args,
     ...impersonateArgs(opts.ytdlp),
