@@ -130,7 +130,7 @@ npm run unlink yanker  # to unlink the global command
 ```
 
 Stack: TypeScript, [Ink](https://github.com/vadimdemedes/ink) (React for
-terminals), `yt-dlp`, `tsup`.
+terminals), `yt-dlp`, `tsup` `ffmpeg`.
 
 ## A note on fair use
 
