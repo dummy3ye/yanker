@@ -300,17 +300,15 @@ export function App(props: AppProps) {
                 }}
                 onSubmit={handleUrlSubmit}
                 onEmptyKey={() => exit()}
-onCtrlH={() => {
-                previousPhaseRef.current = phase
-                setPhase({ name: 'help' })
-              }}
-              onTab={handlePasteFromClipboard}
+                onCtrlH={() => {
+                  previousPhaseRef.current = phase
+                  setPhase({ name: 'help' })
+                }}
+                onTab={handlePasteFromClipboard}
                 placeholder="https://youtube.com/watch?v=…"
                 width={44}
               />
-              {clipboardUrl ? (
-                <Text color={themeProxy.primary}>pasted from clipboard</Text>
-              ) : null}
+              {clipboardUrl ? <Text color={themeProxy.primary}>pasted from clipboard</Text> : null}
             </Box>
             <Shortcuts
               theme={themeProxy}

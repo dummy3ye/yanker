@@ -17,15 +17,15 @@ pull from YouTube, Vimeo, SoundCloud, Instagram, TikTok, X and other sites.
   - Anything older — including the Node 18 that ships with Ubuntu 22.04 /
     Debian 12 / RHEL 9 — is refused before the UI starts, with a message
     telling you exactly that and how to fix it.
-- **yt-dlp** — *optional*. Used from your PATH if present; otherwise a
+- **yt-dlp** — _optional_. Used from your PATH if present; otherwise a
   standalone build is auto-fetched to `~/.yanker/bin` on first run (no
   Python needed). First run needs network access to `github.com` plus
   write/execute permission in your home directory.
-- **ffmpeg** — *optional*. Used from your PATH when present, with
+- **ffmpeg** — _optional_. Used from your PATH when present, with
   `ffmpeg-static` as a bundled fallback for merging and mp3 conversion. The
   fallback downloads a ~30–80MB binary at install time, so offline installs
   or `--ignore-scripts` need a system `ffmpeg` instead.
-- **Clipboard paste** — *optional*, only for Tab-paste in the URL field:
+- **Clipboard paste** — _optional_, only for Tab-paste in the URL field:
   Linux needs `wl-paste` (Wayland) or `xclip`/`xsel` (X11), macOS uses
   `pbpaste`, Windows uses PowerShell `Get-Clipboard`.
 
@@ -65,15 +65,15 @@ otherwise, and the saved path is printed when you're finished.
 
 ### Cookies (bot-checks & servers)
 
-YouTube starts answering every request with *"Sign in to confirm you're not
-a bot"* the moment it can't see your browser — which is exactly what happens
+YouTube starts answering every request with _"Sign in to confirm you're not
+a bot"_ the moment it can't see your browser — which is exactly what happens
 on a VPS, Docker, or any box without Chrome/Firefox on it. That's what
 `--cookies` is for: hand yanker your real logged-in session and the wall
 comes down.
 
 **Get the cookies.** In the browser you actually use for YouTube, export
-them to a Netscape-format file — Chrome: *Get cookies.txt LOCALLY*
-extension; Firefox: *cookies.txt* extension. Move it over, then:
+them to a Netscape-format file — Chrome: _Get cookies.txt LOCALLY_
+extension; Firefox: _cookies.txt_ extension. Move it over, then:
 
 ```sh
 scp cookies.txt root@your-vps:/root/

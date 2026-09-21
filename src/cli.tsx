@@ -242,7 +242,15 @@ async function headlessRun(cfg: {
   console.log(`yanker: grabbing ${title}…`)
   const ffmpegLocation = await findFfmpeg()
   const filepath = await download(
-    { ytdlp, ffmpegLocation, url: cfg.url, choice, outDir: cfg.outDir, yesPlaylist, cookiesFile: cfg.cookies },
+    {
+      ytdlp,
+      ffmpegLocation,
+      url: cfg.url,
+      choice,
+      outDir: cfg.outDir,
+      yesPlaylist,
+      cookiesFile: cfg.cookies,
+    },
     { onProgress: () => {}, onProcessing: () => {} },
   )
   console.log(

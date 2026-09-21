@@ -32,7 +32,7 @@ export default tseslint.config(
   prettier,
   {
     settings: {
-      react: {version: 'detect'},
+      react: { version: 'detect' },
     },
   },
 )

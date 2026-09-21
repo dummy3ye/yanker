@@ -324,9 +324,7 @@ async function browserHasCookies(name: string): Promise<boolean> {
 
 /** Return list of browser names (yt-dlp compatible) that have cookie stores present. */
 async function getAvailableBrowsersWithCookies(): Promise<string[]> {
-  const candidates = [
-    'chrome', 'firefox', 'safari', 'edge', 'brave', 'vivaldi', 'opera',
-  ] as const
+  const candidates = ['chrome', 'firefox', 'safari', 'edge', 'brave', 'vivaldi', 'opera'] as const
   const available: string[] = []
   for (const b of candidates) {
     if (await browserHasCookies(b)) available.push(b)
@@ -368,8 +366,7 @@ const impersonateBroken = new Set<string>()
 const impersonateArgs = (ytdlp: string): string[] =>
   impersonateBroken.has(ytdlp) ? [] : ['--impersonate', 'chrome']
 
-const isImpersonateError = (text: string): boolean =>
-  /impersonat|curl.?cffi/i.test(text)
+const isImpersonateError = (text: string): boolean => /impersonat|curl.?cffi/i.test(text)
 
 const isCookieError = (text: string): boolean =>
   /could not copy|cookie.*(lock|database)|decrypt.*cookie|keyring/i.test(text)
@@ -688,14 +685,8 @@ export function cleanYtDlpError(stderr: string): string {
       /Sign in to confirm you're not a bot.*/i,
       "Sign in to confirm you're not a bot — this connection is blocked.",
     ],
-    [
-      /Requested format is not available.*/i,
-      'Requested format is not available.',
-    ],
-    [
-      /HTTP Error 403: Forbidden.*/i,
-      'Stream blocked (HTTP 403) — often IP-level throttling.',
-    ],
+    [/Requested format is not available.*/i, 'Requested format is not available.'],
+    [/HTTP Error 403: Forbidden.*/i, 'Stream blocked (HTTP 403) — often IP-level throttling.'],
   ]
   for (const [pattern, replacement] of oneLiners) {
     if (pattern.test(text)) {
