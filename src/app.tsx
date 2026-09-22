@@ -373,7 +373,7 @@ export function App(props: AppProps) {
                   ? [
                       ['↵', 'download'],
                       ['⇥', 'paste'],
-                      ['o', 'output'],
+                      ['^o', 'output'],
                       ['q', 'quit'],
                       ['^h', 'help'],
                     ]
@@ -431,7 +431,7 @@ export function App(props: AppProps) {
               items={[
                 ['↑↓', 'choose'],
                 ['↵', 'grab'],
-                ['o', 'output'],
+                ['^o', 'output'],
                 ['esc', 'back'],
                 ['^h', 'help'],
                 ['^c', 'quit'],
@@ -484,7 +484,7 @@ export function App(props: AppProps) {
               items={[
                 ['↑↓', 'choose'],
                 ['↵', 'download'],
-                ['o', 'output'],
+                ['^o', 'output'],
                 ['esc', 'back'],
                 ['^h', 'help'],
                 ['^t', 'theme'],
@@ -570,7 +570,7 @@ export function App(props: AppProps) {
               theme={themeProxy}
               items={[
                 ['esc', 'another'],
-                ['o', 'output'],
+                ['^o', 'output'],
                 ['^h', 'help'],
                 ['^c', 'quit'],
               ]}
