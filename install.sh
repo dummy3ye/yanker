@@ -1,397 +1,377 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PKG_NAME="@dummy3ye/yanker"
-BIN_NAME="yanker"
-REQUIRED_NODE_MAJOR=22
-STANDALONE_YTDLP="$HOME/.yanker/bin/yt-dlp"
-LOCAL_BIN="$HOME/.local/bin"
+# yanker installer
+# looks great with gum (charm.sh/gum), works fine without
 
-NONINTERACTIVE=0
-CHECK_ONLY=0
-DRY_RUN=0
-PM_OVERRIDE=""
+PKG="@dummy3ye/yanker"
+NODE_MIN=22
+YTDLP_HOME="$HOME/.yanker/bin"
 
-usage() {
-  cat <<EOF
-yanker installer
-
-Usage:
-  ./install.sh [options]
-
-Options:
-  -y, --yes      Non-interactive mode
-  -c, --check    Check status only
-  --dry-run      Print operations without executing
-  --pm <name>    Force package manager
-  -h, --help     Show this help
-EOF
-}
+# ── args ─────────────────────────────────────────
+YES=0; CHECK=0; DRY=0; PM_FORCE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -y|--yes) NONINTERACTIVE=1; shift ;;
-    -c|--check) CHECK_ONLY=1; shift ;;
-    --dry-run) DRY_RUN=1; shift ;;
-    --pm) PM_OVERRIDE="${2:-}"; shift 2 ;;
-    --pm=*) PM_OVERRIDE="${1#--pm=}"; shift ;;
-    -h|--help) usage; exit 0 ;;
-    *) echo "Unknown option: $1" >&2; exit 1 ;;
+    -y|--yes)     YES=1; shift ;;
+    -c|--check)   CHECK=1; shift ;;
+    --dry-run)    DRY=1; shift ;;
+    --pm)         PM_FORCE="${2:-}"; shift 2 ;;
+    --pm=*)       PM_FORCE="${1#--pm=}"; shift ;;
+    -h|--help)
+      cat <<'HELP'
+yanker installer
+
+  ./install.sh            interactive setup (install gum for the full experience)
+  ./install.sh -y         auto-install everything that's missing
+  ./install.sh -c         just check what's installed
+  ./install.sh --dry-run  preview without touching anything
+  ./install.sh --pm paru  force a specific package manager
+HELP
+      exit 0 ;;
+    *) printf 'unknown: %s\n' "$1" >&2; exit 1 ;;
   esac
 done
 
-have() { command -v "$1" >/dev/null 2>&1; }
+has() { command -v "$1" &>/dev/null; }
 
-run_sudo() {
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] sudo $*"
+as_root() {
+  [[ $DRY -eq 1 ]] && { echo "[dry] sudo $*"; return 0; }
+  if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then "$@"
+  elif has sudo; then sudo "$@"
+  else "$@"; fi
+}
+
+# ── package manager ──────────────────────────────
+detect_pm() {
+  for c in paru yay pacman apt-get dnf yum zypper apk emerge nix-env snap brew winget; do
+    if has "$c"; then [[ "$c" == "apt-get" ]] && echo apt || echo "$c"; return; fi
+  done
+  echo none
+}
+PM="${PM_FORCE:-$(detect_pm)}"
+
+# ── gum + ansi ───────────────────────────────────
+G=0; has gum && G=1
+
+spin() {
+  local title="$1" cmd="$2"
+  if [[ $DRY -eq 1 ]]; then
+    echo "  [dry] $cmd"
     return 0
   fi
-  if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
-    "$@"
-  elif have sudo; then
-    sudo "$@"
+  if [[ $G -eq 1 ]]; then
+    gum spin --spinner dot --spinner.foreground 220 --title "$title" -- bash -c "$cmd"
   else
-    "$@"
+    printf '  %s … ' "$title"
+    if bash -c "$cmd" >/dev/null 2>&1; then echo "done"
+    else echo "failed"; return 1; fi
   fi
 }
 
-# --- Package Manager Detection ---
-
-PM_CANDIDATES=(paru yay pacman apt-get dnf yum zypper apk emerge nix-env snap brew winget flatpak)
-
-detect_pms() {
-  local c bin found=()
-  for c in "${PM_CANDIDATES[@]}"; do
-    bin="$c"
-    [[ "$c" == "apt-get" ]] && bin="apt-get"
-    if have "$bin"; then
-      if [[ "$c" == "apt-get" ]]; then
-        found+=(apt)
-      else
-        found+=("$c")
-      fi
-    fi
-  done
-  echo "${found[@]}"
-}
-
-PM_LIST="$(detect_pms)"
-PM="${PM_LIST%% *}"
-if [[ -n "$PM_OVERRIDE" ]]; then
-  if [[ " $PM_LIST " == *" $PM_OVERRIDE "* ]]; then
-    PM="$PM_OVERRIDE"
-  else
-    echo "Error: PM '$PM_OVERRIDE' unavailable (found: ${PM_LIST:-none})" >&2
-    exit 1
-  fi
-fi
-[[ -z "$PM" ]] && PM="none"
-
-OS_LABEL="$(uname -s)"
-if [[ -f /etc/os-release ]]; then
-  OS_LABEL="$(bash -c 'source /etc/os-release && echo "${PRETTY_NAME:-$NAME}"' 2>/dev/null || uname -s) ($(uname -m))"
+if [[ -t 1 ]]; then
+  _y=$'\033[38;5;220m' _g=$'\033[32m' _r=$'\033[31m'
+  _d=$'\033[90m' _b=$'\033[1m' _n=$'\033[0m'
+else
+  _y='' _g='' _r='' _d='' _b='' _n=''
 fi
 
-# --- Gum Detection ---
-
-HAVE_GUM=0
-have gum && HAVE_GUM=1
-
-# --- Prompts & Feedback ---
-
-confirm() {
-  if [[ "$NONINTERACTIVE" -eq 1 ]]; then return 0; fi
-  if [[ "$HAVE_GUM" -eq 1 ]]; then
-    # Direct /dev/tty redirect ensures gum confirm never skips
-    gum confirm "$1" < /dev/tty
-    return $?
-  fi
-  local ans
-  read -rp "$1 [y/N] " ans < /dev/tty || return 1
-  [[ "$ans" =~ ^[Yy] ]]
+# ── banner ───────────────────────────────────────
+print_logo() {
+  cat <<'LOGO'
+            _
+ _  _ __ _ _ _ | |_____ _ _
+| || / _` | ' \| / / -_) '_|
+ \_, \__,_|_||_|_\_\___|_|
+ |__/
+LOGO
 }
 
-run_spin() {
-  local title="$1" cmd="$2"
-  if [[ "$HAVE_GUM" -eq 1 ]]; then
-    gum spin --title "$title" -- bash -c "$cmd"
+banner() {
+  echo
+  if [[ $G -eq 1 ]]; then
+    print_logo | gum style --foreground 220 --bold
+    gum style --border rounded --border-foreground 240 --padding "0 2" \
+      "$(gum style --foreground 220 --bold installer)" \
+      "$(gum style --foreground 245 "$(uname -sm) · $PM")"
   else
-    echo "$title..."
-    bash -c "$cmd"
+    printf '%s%s' "$_y" "$_b"
+    print_logo
+    printf '%s' "$_n"
+    printf '  %sinstaller%s  %s%s · %s%s\n' "$_b" "$_n" "$_d" "$(uname -sm)" "$PM" "$_n"
   fi
-}
-
-print_banner() {
-  local pm_info="managers: ${PM_LIST:-none} (using $PM)"
-  if [[ "$HAVE_GUM" -eq 1 ]]; then
-    gum style --border rounded --padding "0 1" "yanker preflight" "$OS_LABEL | $pm_info"
-  else
-    echo "=== yanker preflight ==="
-    echo "$OS_LABEL | $pm_info"
-    echo
-  fi
-}
-
-# --- Status Checks ---
-
-NODE_STATUS="";   NODE_VER=""; NODE_MAJOR=0
-NPM_STATUS="";    NPM_VER=""
-YANKER_STATUS=""; YANKER_VER=""
-YTDLP_STATUS="";  YTDLP_VER=""; YTDLP_WHERE=""
-FFMPEG_STATUS=""; FFMPEG_VER=""
-CLIP_STATUS="";   CLIP_WITH=""
-
-check_all() {
-  if have node; then
-    NODE_VER="$(node --version 2>/dev/null || echo "?")"
-    NODE_MAJOR="${NODE_VER#v}"; NODE_MAJOR="${NODE_MAJOR%%.*}"
-    if [[ "${NODE_MAJOR:-0}" =~ ^[0-9]+$ ]] && (( NODE_MAJOR >= REQUIRED_NODE_MAJOR )); then
-      NODE_STATUS="OK"
-    else
-      NODE_STATUS="OLD"
-    fi
-  else
-    NODE_STATUS="MISSING"; NODE_VER="-"
-  fi
-
-  if have npm; then
-    NPM_STATUS="OK"
-    NPM_VER="$(npm --version 2>/dev/null || echo "?")"
-  else
-    NPM_STATUS="MISSING"
-    NPM_VER="-"
-  fi
-
-  if have "$BIN_NAME"; then
-    YANKER_STATUS="OK"
-    YANKER_VER="$("$BIN_NAME" --version 2>/dev/null || echo "?")"
-  elif have npm && npm ls -g --depth=0 2>/dev/null | grep -q "$PKG_NAME"; then
-    YANKER_STATUS="OK"
-    YANKER_VER="(not on PATH)"
-  else
-    YANKER_STATUS="MISSING"
-    YANKER_VER="-"
-  fi
-
-  if have yt-dlp; then
-    YTDLP_STATUS="OK"
-    YTDLP_VER="$(yt-dlp --version 2>/dev/null | head -n1 || echo "?")"
-    YTDLP_WHERE="system ($(command -v yt-dlp))"
-  elif [[ -x "$STANDALONE_YTDLP" ]]; then
-    YTDLP_STATUS="OK"
-    YTDLP_VER="$("$STANDALONE_YTDLP" --version 2>/dev/null | head -n1 || echo "?")"
-    YTDLP_WHERE="standalone"
-  else
-    YTDLP_STATUS="MISSING"
-    YTDLP_VER="-"
-    YTDLP_WHERE=""
-  fi
-
-  if have ffmpeg; then
-    FFMPEG_STATUS="OK"
-    FFMPEG_VER="$(ffmpeg -version 2>/dev/null | head -n1 | awk '{print $3}' || echo "?")"
-  else
-    FFMPEG_STATUS="MISSING"
-    FFMPEG_VER="-"
-  fi
-
-  CLIP_WITH=""
-  case "$(uname -s)" in
-    Darwin) have pbpaste && CLIP_WITH="pbpaste" ;;
-    MINGW*|MSYS*|CYGWIN*) CLIP_WITH="Get-Clipboard" ;;
-    *)
-      for c in wl-paste xclip xsel; do
-        if have "$c"; then CLIP_WITH="$c"; break; fi
-      done
-      ;;
-  esac
-  if [[ -n "$CLIP_WITH" ]]; then CLIP_STATUS="OK"; else CLIP_STATUS="MISSING"; CLIP_WITH="-"; fi
-}
-
-print_status() {
-  print_banner
-  printf '  %-10s %-8s %s\n' "TOOL" "STATUS" "DETAIL"
-  printf '  %-10s %-8s %s\n' "node"      "$NODE_STATUS"   "$NODE_VER (>= $REQUIRED_NODE_MAJOR)"
-  printf '  %-10s %-8s %s\n' "npm"       "$NPM_STATUS"    "v$NPM_VER"
-  printf '  %-10s %-8s %s\n' "yanker"    "$YANKER_STATUS" "$YANKER_VER"
-  printf '  %-10s %-8s %s %s\n' "yt-dlp" "$YTDLP_STATUS" "$YTDLP_VER" "$YTDLP_WHERE"
-  printf '  %-10s %-8s %s\n' "ffmpeg"    "$FFMPEG_STATUS" "$FFMPEG_VER"
-  printf '  %-10s %-8s %s\n' "clipboard" "$CLIP_STATUS"  "$CLIP_WITH"
-
-  local gum_disp="MISSING"
-  if [[ "$HAVE_GUM" -eq 1 ]]; then gum_disp="OK"; fi
-  printf '  %-10s %-8s %s\n' "gum"       "$gum_disp" ""
   echo
 }
 
-# --- Installation Actions ---
+# ── scan ─────────────────────────────────────────
+NODE_ST="" NODE_V=""
+NPM_ST=""  NPM_V=""
+YNK_ST=""  YNK_V=""
+YT_ST=""   YT_V="" YT_W=""
+FF_ST=""   FF_V=""
+CL_ST=""   CL_V=""
 
-sys_install() {
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] ($PM) install $*"
-    return 0
-  fi
-  case "$PM" in
-    paru|yay) $PM -S --needed --noconfirm "$@" ;;
-    pacman) run_sudo pacman -S --needed --noconfirm "$@" ;;
-    apt) run_sudo apt-get update && run_sudo apt-get install -y "$@" ;;
-    dnf|yum) run_sudo "$PM" install -y "$@" ;;
-    zypper) run_sudo zypper install -y "$@" ;;
-    apk) run_sudo apk add "$@" ;;
-    emerge) run_sudo emerge "$@" ;;
-    nix-env) nix-env -iA "$@" ;;
-    snap) run_sudo snap install "$@" ;;
-    brew) brew install "$@" ;;
-    winget) winget install "$@" ;;
-    *) echo "No package manager available for $*" >&2; return 1 ;;
+scan() {
+  if has node; then
+    NODE_V="$(node -v 2>/dev/null || echo '?')"
+    local m="${NODE_V#v}"; m="${m%%.*}"
+    if [[ "${m:-0}" =~ ^[0-9]+$ ]] && (( m >= NODE_MIN )); then
+      NODE_ST=ok
+    else
+      NODE_ST=old
+    fi
+  else NODE_ST=miss; NODE_V="—"; fi
+
+  if has npm; then NPM_ST=ok; NPM_V="v$(npm -v 2>/dev/null)"
+  else NPM_ST=miss; NPM_V="—"; fi
+
+  if has yanker; then YNK_ST=ok; YNK_V="v$(yanker -v 2>/dev/null)"
+  else YNK_ST=miss; YNK_V="—"; fi
+
+  if has yt-dlp; then
+    YT_ST=ok; YT_V="$(yt-dlp --version 2>/dev/null | head -1)"; YT_W="system"
+  elif [[ -x "$YTDLP_HOME/yt-dlp" ]]; then
+    YT_ST=ok; YT_V="$("$YTDLP_HOME/yt-dlp" --version 2>/dev/null | head -1)"; YT_W="standalone"
+  else YT_ST=miss; YT_V="—"; YT_W=""; fi
+
+  if has ffmpeg; then FF_ST=ok; FF_V="$(ffmpeg -version 2>/dev/null | head -1 | awk '{print $3}')"
+  else FF_ST=miss; FF_V="—"; fi
+
+  CL_V=""
+  case "$(uname -s)" in
+    Darwin) has pbpaste && CL_V=pbpaste ;;
+    MINGW*|MSYS*|CYGWIN*) CL_V=Get-Clipboard ;;
+    *) for c in wl-paste xclip xsel; do has "$c" && { CL_V="$c"; break; }; done ;;
   esac
+  [[ -n "$CL_V" ]] && CL_ST=ok || { CL_ST=miss; CL_V="—"; }
 }
 
-install_yanker() {
-  if [[ "$NPM_STATUS" != "OK" || "$NODE_STATUS" != "OK" ]]; then
-    echo "Error: Node.js >= $REQUIRED_NODE_MAJOR and npm are required." >&2
+# ── status display ───────────────────────────────
+_row() {
+  local st="$1" name="$2" detail="$3"
+  local ic
+  case "$st" in
+    ok)   ic="${_g}✓${_n}" ;;
+    miss) ic="${_r}✗${_n}" ;;
+    old)  ic="${_y}⚠${_n}" ;;
+  esac
+  printf '  %b  %-12s %s%s%s\n' "$ic" "$name" "$_d" "$detail" "$_n"
+}
+
+show_status() {
+  local nd="$NODE_V"
+  [[ "$NODE_ST" != ok ]] && nd="$NODE_V (need ≥$NODE_MIN)"
+  _row "$NODE_ST" "node"      "$nd"
+  _row "$NPM_ST"  "npm"       "$NPM_V"
+  _row "$YNK_ST"  "yanker"    "$YNK_V"
+  _row "$YT_ST"   "yt-dlp"    "$YT_V${YT_W:+ ($YT_W)}"
+  _row "$FF_ST"   "ffmpeg"    "$FF_V"
+  _row "$CL_ST"   "clipboard" "$CL_V"
+  echo
+}
+
+# ── install actions ──────────────────────────────
+do_yanker() {
+  if [[ "$NODE_ST" != ok || "$NPM_ST" != ok ]]; then
+    printf '  %s✗ need node ≥%s and npm first%s\n' "$_r" "$NODE_MIN" "$_n" >&2
     return 1
   fi
-
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] npm install -g $PKG_NAME@latest"
-    return 0
-  fi
-
-  run_spin "Installing $PKG_NAME" "npm install -g '$PKG_NAME@latest'"
+  spin "grabbing $PKG" "npm install -g '$PKG@latest'"
 }
 
-uninstall_yanker() {
-  if [[ "$NPM_STATUS" != "OK" ]]; then
-    echo "Error: npm is required to uninstall $PKG_NAME." >&2
-    return 1
-  fi
-
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] npm uninstall -g $PKG_NAME"
-    return 0
-  fi
-
-  run_spin "Uninstalling $PKG_NAME globally" "npm uninstall -g '$PKG_NAME'"
+do_uninstall() {
+  [[ "$NPM_ST" != ok ]] && { echo "  need npm to uninstall" >&2; return 1; }
+  spin "removing $PKG" "npm uninstall -g '$PKG'"
 }
 
-install_ytdlp() {
+do_ytdlp() {
   case "$PM" in
-    paru|yay|pacman|apt|dnf|yum|zypper|apk|brew) sys_install yt-dlp ;;
-    nix-env) sys_install nixpkgs.yt-dlp ;;
-    winget) sys_install yt-dlp.yt-dlp ;;
+    paru|yay)  spin "installing yt-dlp via $PM" "$PM -S --needed --noconfirm yt-dlp" ;;
+    pacman)    spin "installing yt-dlp" "sudo pacman -S --needed --noconfirm yt-dlp" ;;
+    apt)       spin "installing yt-dlp" "sudo apt-get update -qq && sudo apt-get install -yqq yt-dlp" ;;
+    dnf|yum)   spin "installing yt-dlp" "sudo $PM install -y yt-dlp" ;;
+    zypper)    spin "installing yt-dlp" "sudo zypper install -y yt-dlp" ;;
+    apk)       spin "installing yt-dlp" "sudo apk add yt-dlp" ;;
+    emerge)    spin "installing yt-dlp" "sudo emerge yt-dlp" ;;
+    nix-env)   spin "installing yt-dlp" "nix-env -iA nixpkgs.yt-dlp" ;;
+    brew)      spin "installing yt-dlp" "brew install yt-dlp" ;;
+    winget)    spin "installing yt-dlp" "winget install yt-dlp.yt-dlp" ;;
     *)
-      mkdir -p "$LOCAL_BIN"
-      local url="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
-      run_spin "Fetching yt-dlp" "curl -fsSL '$url' -o '$LOCAL_BIN/yt-dlp' && chmod +x '$LOCAL_BIN/yt-dlp'"
+      mkdir -p "$YTDLP_HOME"
+      spin "fetching standalone yt-dlp" \
+        "curl -fsSL 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp' -o '$YTDLP_HOME/yt-dlp' && chmod +x '$YTDLP_HOME/yt-dlp'"
       ;;
   esac
 }
 
-install_ffmpeg() {
+do_ffmpeg() {
   case "$PM" in
-    paru|yay|pacman|apt|dnf|yum|zypper|apk|brew|snap) sys_install ffmpeg ;;
-    nix-env) sys_install nixpkgs.ffmpeg ;;
-    winget) sys_install Gyan.FFmpeg ;;
-    *) echo "Install ffmpeg manually for your system." ;;
+    paru|yay)  spin "installing ffmpeg via $PM" "$PM -S --needed --noconfirm ffmpeg" ;;
+    pacman)    spin "installing ffmpeg" "sudo pacman -S --needed --noconfirm ffmpeg" ;;
+    apt)       spin "installing ffmpeg" "sudo apt-get update -qq && sudo apt-get install -yqq ffmpeg" ;;
+    dnf|yum)   spin "installing ffmpeg" "sudo $PM install -y ffmpeg" ;;
+    zypper)    spin "installing ffmpeg" "sudo zypper install -y ffmpeg" ;;
+    apk)       spin "installing ffmpeg" "sudo apk add ffmpeg" ;;
+    emerge)    spin "installing ffmpeg" "sudo emerge ffmpeg" ;;
+    nix-env)   spin "installing ffmpeg" "nix-env -iA nixpkgs.ffmpeg" ;;
+    snap)      spin "installing ffmpeg" "sudo snap install ffmpeg" ;;
+    brew)      spin "installing ffmpeg" "brew install ffmpeg" ;;
+    winget)    spin "installing ffmpeg" "winget install Gyan.FFmpeg" ;;
+    *)         echo "  install ffmpeg manually for your platform" ;;
   esac
 }
 
-install_clipboard() {
+do_clip() {
   case "$PM" in
-    paru|yay|pacman|apt|dnf|yum|zypper|apk) sys_install wl-clipboard xclip ;;
-    nix-env) sys_install nixpkgs.wl-clipboard nixpkgs.xclip ;;
-    *) echo "Install wl-clipboard or xclip manually." ;;
+    paru|yay)    spin "installing clipboard tools" "$PM -S --needed --noconfirm wl-clipboard xclip" ;;
+    pacman)      spin "installing clipboard tools" "sudo pacman -S --needed --noconfirm wl-clipboard xclip" ;;
+    apt)         spin "installing clipboard tools" "sudo apt-get install -yqq wl-clipboard xclip" ;;
+    dnf|yum)     spin "installing clipboard tools" "sudo $PM install -y wl-clipboard xclip" ;;
+    zypper)      spin "installing clipboard tools" "sudo zypper install -y wl-clipboard xclip" ;;
+    apk)         spin "installing clipboard tools" "sudo apk add wl-clipboard xclip" ;;
+    nix-env)     spin "installing clipboard tools" "nix-env -iA nixpkgs.wl-clipboard nixpkgs.xclip" ;;
+    *)           echo "  install wl-clipboard or xclip manually" ;;
   esac
 }
 
-install_pot_provider() {
-  if ! have unzip; then
-    echo "Error: unzip is required." >&2
-    return 1
+do_pot() {
+  has git   || { echo "  need git for PO token setup" >&2; return 1; }
+  has unzip || { echo "  need unzip for PO token setup" >&2; return 1; }
+
+  local plugdir="$HOME/.config/yt-dlp/plugins"
+  local srvdir="$HOME/.yanker/pot-provider"
+  local zip="$plugdir/pot-provider.zip"
+  mkdir -p "$plugdir"
+
+  spin "downloading PO token plugin" \
+    "curl -fsSL 'https://github.com/Brainicism/bgutil-ytdlp-pot-provider/releases/latest/download/bgutil-ytdlp-pot-provider.zip' -o '$zip'"
+
+  spin "extracting plugin" "unzip -o '$zip' -d '$plugdir' && rm -f '$zip'"
+
+  if [[ ! -d "$srvdir" ]]; then
+    spin "cloning PO server" \
+      "git clone --single-branch --branch 2.0.0 https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git '$srvdir'"
   fi
 
-  local plugin_dir="$HOME/.config/yt-dlp/plugins"
-  local zip_file="$plugin_dir/pot-provider.zip"
-  mkdir -p "$plugin_dir"
-
-  run_spin "Downloading PO token plugin" \
-    "curl -fsSL https://github.com/Brainicism/bgutil-ytdlp-pot-provider/releases/latest/download/bgutil-ytdlp-pot-provider.zip -o '$zip_file'"
-
-  run_spin "Extracting plugin" \
-    "unzip -o '$zip_file' -d '$plugin_dir' && rm -f '$zip_file'"
-
-  local server_dir="$HOME/.yanker/pot-provider"
-  if [[ ! -d "$server_dir" ]]; then
-    run_spin "Cloning PO server" \
-      "git clone --single-branch --branch 2.0.0 https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git '$server_dir'"
-  fi
-
-  run_spin "Building PO server" \
-    "cd '$server_dir/server' && npm ci && npx tsc"
+  spin "building PO server" "cd '$srvdir/server' && npm ci && npx tsc"
 }
 
-# --- Main Flow ---
+# ── main ─────────────────────────────────────────
+scan
+banner
+show_status
 
-check_all
-print_status
+[[ $CHECK -eq 1 ]] && exit 0
 
-if [[ "$CHECK_ONLY" -eq 1 ]]; then
-  exit 0
+# build the menu
+ITEMS=()
+PRESEL=()
+
+[[ "$YNK_ST" == miss ]] \
+  && { ITEMS+=("Install yanker"); PRESEL+=("Install yanker"); } \
+  || ITEMS+=("Update yanker")
+
+[[ "$YT_ST" == miss ]] \
+  && { ITEMS+=("Install yt-dlp"); PRESEL+=("Install yt-dlp"); } \
+  || ITEMS+=("Update yt-dlp")
+
+[[ "$FF_ST" == miss ]] \
+  && { ITEMS+=("Install ffmpeg"); PRESEL+=("Install ffmpeg"); } \
+  || ITEMS+=("Reinstall ffmpeg")
+
+if [[ "$CL_ST" == miss && "$(uname -s)" == Linux ]]; then
+  ITEMS+=("Install clipboard tools")
+  PRESEL+=("Install clipboard tools")
 fi
 
-if [[ "$NONINTERACTIVE" -eq 1 ]]; then
-  [[ "$YANKER_STATUS" != "OK" ]] && install_yanker
-  [[ "$YTDLP_STATUS" != "OK" ]] && install_ytdlp
-  [[ "$FFMPEG_STATUS" != "OK" ]] && install_ffmpeg
-  [[ "$CLIP_STATUS" != "OK" ]] && install_clipboard
-  check_all
-  print_status
-  exit 0
-fi
+ITEMS+=("Setup PO token provider")
+ITEMS+=("Uninstall yanker")
 
-OPT_YANKER="yanker CLI (install/update)"
-OPT_UNINSTALL="yanker CLI (uninstall global)"
-OPT_YTDLP="yt-dlp"
-OPT_FFMPEG="ffmpeg"
-OPT_CLIP="clipboard helper"
-OPT_POT="PO token provider (bgutil)"
+# pick actions
+CHOSEN=""
 
-RAW_SELECTIONS=""
+if [[ $YES -eq 1 ]]; then
+  # auto: grab everything that's missing
+  [[ "$YNK_ST" != ok ]] && CHOSEN+="Install yanker"$'\n'
+  [[ "$YT_ST"  != ok ]] && CHOSEN+="Install yt-dlp"$'\n'
+  [[ "$FF_ST"  != ok ]] && CHOSEN+="Install ffmpeg"$'\n'
+  [[ "$CL_ST"  != ok && "$(uname -s)" == Linux ]] && CHOSEN+="Install clipboard tools"$'\n'
 
-if [[ "$HAVE_GUM" -eq 1 ]]; then
-  gum style --foreground 212 "Select actions to perform:"
+elif [[ $G -eq 1 ]]; then
+  # gum choose — the good stuff
+  sel_str=""
+  for s in "${PRESEL[@]}"; do
+    [[ -n "$sel_str" ]] && sel_str+=","
+    sel_str+="$s"
+  done
+
+  CHOSEN="$(gum choose --no-limit \
+    --header "pick what to set up  (space toggles · enter confirms)" \
+    --header.foreground 245 \
+    --cursor.foreground 220 \
+    --selected-prefix "✓ " \
+    --selected-prefix.foreground 78 \
+    --unselected-prefix "· " \
+    --unselected-prefix.foreground 240 \
+    ${sel_str:+--selected "$sel_str"} \
+    "${ITEMS[@]}" 2>/dev/null)" || true
+
 else
-  echo "Select actions to perform:"
+  # no gum: ask about missing stuff (default yes)
+  for item in "${PRESEL[@]}"; do
+    local ans=""
+    read -rp "  $item? [Y/n] " ans < /dev/tty || continue
+    [[ ! "$ans" =~ ^[Nn] ]] && CHOSEN+="$item"$'\n'
+  done
+  # offer extras (default no)
+  for extra in "Setup PO token provider" "Uninstall yanker"; do
+    local ans=""
+    read -rp "  $extra? [y/N] " ans < /dev/tty || continue
+    [[ "$ans" =~ ^[Yy] ]] && CHOSEN+="$extra"$'\n'
+  done
 fi
 
-# Sequential confirmations guarantee input capture
-confirm "$OPT_YANKER" && RAW_SELECTIONS+="$OPT_YANKER"$'\n'
-confirm "$OPT_UNINSTALL" && RAW_SELECTIONS+="$OPT_UNINSTALL"$'\n'
-confirm "$OPT_YTDLP" && RAW_SELECTIONS+="$OPT_YTDLP"$'\n'
-confirm "$OPT_FFMPEG" && RAW_SELECTIONS+="$OPT_FFMPEG"$'\n'
-confirm "$OPT_CLIP" && RAW_SELECTIONS+="$OPT_CLIP"$'\n'
-confirm "$OPT_POT" && RAW_SELECTIONS+="$OPT_POT"$'\n'
-
-cleaned_selections=$(echo "$RAW_SELECTIONS" | tr -d '[:space:]')
-if [[ -z "$cleaned_selections" ]]; then
-  echo "No actions selected."
+cleaned="$(echo "$CHOSEN" | tr -d '[:space:]')"
+if [[ -z "$cleaned" ]]; then
+  echo "  nothing selected — all good"
   exit 0
 fi
 
+echo
+
+# cache sudo before spinners swallow the password prompt
+case "$PM" in
+  pacman|apt|dnf|yum|zypper|apk|emerge)
+    if [[ "${EUID:-$(id -u)}" -ne 0 ]] && has sudo && [[ $DRY -eq 0 ]]; then
+      sudo -v 2>/dev/null || true
+    fi ;;
+esac
+
+# go
 while IFS= read -r sel; do
   [[ -z "$sel" ]] && continue
   case "$sel" in
-    "$OPT_YANKER")    install_yanker || true ;;
-    "$OPT_UNINSTALL") uninstall_yanker || true ;;
-    "$OPT_YTDLP")     install_ytdlp || true ;;
-    "$OPT_FFMPEG")    install_ffmpeg || true ;;
-    "$OPT_CLIP")      install_clipboard || true ;;
-    "$OPT_POT")       install_pot_provider || true ;;
+    "Install yanker"|"Update yanker")     do_yanker    || true ;;
+    "Uninstall yanker")                    do_uninstall || true ;;
+    "Install yt-dlp"|"Update yt-dlp")     do_ytdlp     || true ;;
+    "Install ffmpeg"|"Reinstall ffmpeg")   do_ffmpeg    || true ;;
+    "Install clipboard tools")             do_clip      || true ;;
+    "Setup PO token provider")             do_pot       || true ;;
   esac
-done <<< "$RAW_SELECTIONS"
+done <<< "$CHOSEN"
 
-check_all
+# final check
 echo
-print_status
+scan
+show_status
+
+if [[ $G -eq 1 ]]; then
+  gum style --foreground 220 --bold "all set — go yank some videos ↯"
+else
+  printf '%s%sall set — go yank some videos ↯%s\n' "$_y" "$_b" "$_n"
+fi
+
+if has yanker; then
+  printf '  %stry:%s yanker https://youtu.be/dQw4w9WgXcQ\n' "$_d" "$_n"
+fi
+echo
