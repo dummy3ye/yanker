@@ -25,9 +25,6 @@ pull from YouTube, Vimeo, SoundCloud, Instagram, TikTok, X and other sites.
 - **Grab-protected streams.** If a site's CDN pushes back (403 throttling),
   yanker retries with fresh extraction and browser cookies before giving up.
 
-> [!WARNING]
-> this app auto pulls cookies for youtube from chrome or firefox, if you face trouble, get cookies.txt by using trusted extention or addon and use that
-
 ## Requirements
 
 - **Node.js ≥ 22**
@@ -56,9 +53,6 @@ or you can just run the cool installer by:
 curl https://raw.githubusercontent.com/dummy3ye/yanker/refs/heads/master/install.sh | sh
 ```
 
-The interactive TUI requires a TTY. On non-TTY terminals (scripts, ssh
-pipes), pass a URL with `--best` / `--mp3` / `--list` for headless output. **look bellow ↓**
-
 ### Navigation (inside tui mode)
 
 | Key                                                                          | Action                           |
@@ -72,6 +66,9 @@ pipes), pass a URL with `--best` / `--mp3` / `--list` for headless output. **loo
 | `Ctrl+o`                                                                     | open output dir                  |
 | The `auto` theme follows your terminal's own foreground/background, light or |
 | dark, without guessing.                                                      |
+
+The interactive TUI requires a TTY. On non-TTY terminals (scripts, ssh
+pipes), pass a URL with `--best` / `--mp3` / `--list` for headless output. **look bellow ↓**
 
 ## cli usage
 
@@ -99,6 +96,9 @@ a bot"_ the moment it can't see your browser — which is exactly what happens
 on a VPS, Docker, or any box without Chrome/Firefox on it. That's what
 `--cookies` is for: hand yanker your real logged-in session and the wall
 comes down.
+
+> [!WARNING]
+> this app auto pulls cookies for youtube from chrome or firefox, if you face trouble, get cookies.txt by using trusted extention or addon and use that
 
 **Get the cookies.** In the browser you actually use for YouTube, export
 them to a Netscape-format file — Chrome: _Get cookies.txt LOCALLY_
