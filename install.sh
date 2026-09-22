@@ -2,13 +2,12 @@
 set -euo pipefail
 
 # yanker installer
-# looks great with gum (charm.sh/gum), works fine without
+# looks great with gum (charm.sh/gum), works fine without it anyways :p
 
 PKG="@dummy3ye/yanker"
 NODE_MIN=22
 YTDLP_HOME="$HOME/.yanker/bin"
 
-# ── args ─────────────────────────────────────────
 YES=0; CHECK=0; DRY=0; PM_FORCE=""
 
 while [[ $# -gt 0 ]]; do
@@ -66,7 +65,7 @@ npm_gprefix() {   # npm's effective global prefix, or ""
   echo "$p"
 }
 
-npm_shimbin() {   # where a prefix puts CLI shims (prefix dir itself on Windows)
+npm_shimbin() {
   local prefix="$1"
   [[ -n "$prefix" ]] || return 0
   case "$(uname -s)" in
@@ -80,7 +79,7 @@ npm_allow() {     # npm ≥12 gates postinstall scripts behind an allow-list
   [[ "$m" =~ ^[0-9]+$ ]] && (( m >= 12 )) && echo "--allow-scripts='$PKG,ffmpeg-static'"
 }
 
-# ── package manager ──────────────────────────────
+# all pms that can install yt-dlp and/or ffmpeg, in order of preference
 detect_pm() {
   for c in paru yay pacman apt-get dnf yum zypper apk emerge nix-env snap brew winget; do
     if has "$c"; then [[ "$c" == "apt-get" ]] && echo apt || echo "$c"; return; fi
@@ -89,7 +88,6 @@ detect_pm() {
 }
 PM="${PM_FORCE:-$(detect_pm)}"
 
-# ── gum + ansi ───────────────────────────────────
 G=0; has gum && G=1
 
 # gum's capability probes can leave DECRPM responses (like ^[[?2026;2$y)
@@ -140,12 +138,7 @@ spin() {
   fi
 }
 
-# ── multi-select chooser ─────────────────────────
-# drop-in for gum's `choose` that we fully own: renders the same list plus a
-# bottom hint ending in 'ctrl+c exits'. x/X/tab/space toggle, arrow keys
-# navigate, enter confirms, ctrl+a selects all, ctrl+c cancels (rc 130, like
-# gum). UI is drawn to the tty; only the selection reaches stdout. Preselects
-# the missing installs from $PRESEL.
+# chooser made with gum
 pick_choose() {
   local items=("$@")
   local -a sel=()
@@ -244,7 +237,6 @@ else
   _y='' _g='' _r='' _d='' _b='' _n=''
 fi
 
-# ── banner ───────────────────────────────────────
 print_logo() {
   cat <<'LOGO'
  _  _ __ _ _ _ | |_____ _ _
@@ -318,7 +310,7 @@ scan() {
 }
 
 # PO token provider: plugin extracted into the yt-dlp plugins dir, and the
-# local server cloned + built. Partial states show up as ⚠.
+# local server cloned + built. Partial states show up as ⚠. if it happwns you should resetup it with this script again
 scan_pot() {
   PO_ST=miss; PO_V="—"
   local plugin=0 server=0 srv="$PO_SRVDIR"
@@ -337,7 +329,6 @@ scan_pot() {
   fi
 }
 
-# ── status display ───────────────────────────────
 _row() {
   local st="$1" name="$2" detail="$3"
   local ic
@@ -362,7 +353,6 @@ show_status() {
   echo
 }
 
-# ── install actions ──────────────────────────────
 do_yanker() {
   if [[ "$NODE_ST" != ok || "$NPM_ST" != ok ]]; then
     printf '  %s✗ need node ≥%s and npm first%s\n' "$_r" "$NODE_MIN" "$_n" >&2
@@ -492,7 +482,7 @@ do_pot() {
   spin "building PO server" "cd '$srvdir/server' && npm ci && npx tsc"
 }
 
-# ── main ─────────────────────────────────────────
+# main
 scan
 banner
 show_status
