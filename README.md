@@ -48,6 +48,7 @@ npx @dummy3ye/yanker
 ```
 
 or you can just run the cool installer by:
+</br>_(its looks better if you have gum by charm.sh installed)_
 
 ```sh
 curl https://raw.githubusercontent.com/dummy3ye/yanker/refs/heads/master/install.sh | sh
