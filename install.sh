@@ -92,6 +92,25 @@ PM="${PM_FORCE:-$(detect_pm)}"
 # ── gum + ansi ───────────────────────────────────
 G=0; has gum && G=1
 
+# gum's capability probes can leave DECRPM responses (like ^[[?2026;2$y)
+# sitting in the tty input buffer; if they land just after gum restores echo,
+# the terminal spits them onto the screen. Quietly swallow stragglers after
+# any interactive gum call returns.
+drain_stray() {
+  [[ -t 0 ]] || return 0
+  local st=""
+  st="$(stty -g 2>/dev/null)" || return 0
+  # hold echo off and keep draining for a short window so late replies
+  # (DECRPM/kitty handshakes) can't get splashed onto the screen
+  stty -echo -icanon min 0 time 0 2>/dev/null || true
+  local i
+  for i in 1 2 3 4 5 6; do
+    dd if=/dev/tty bs=1 count=64 of=/dev/null 2>/dev/null || true
+    sleep 0.05
+  done
+  stty "$st" 2>/dev/null || true
+}
+
 spin() {
   local title="$1" cmd="$2"
   if [[ $DRY -eq 1 ]]; then
@@ -100,6 +119,7 @@ spin() {
   fi
   if [[ $G -eq 1 ]]; then
     gum spin --spinner dot --spinner.foreground 220 --title "$title" -- bash -c "$cmd"
+    drain_stray
   else
     printf '  %s … ' "$title"
     if bash -c "$cmd" >/dev/null 2>&1; then echo "done"
@@ -434,17 +454,29 @@ else
     sel_str+="$s"
   done
 
-  if [[ $G -eq 1 ]] && CHOSEN="$(gum choose --no-limit \
-      --header "pick what to set up  (x/tab toggles · enter confirms)" \
-      --header.foreground 245 \
-      --cursor.foreground 220 \
-      --selected-prefix "✓ " \
-      --unselected-prefix "· " \
-      ${sel_str:+--selected "$sel_str"} \
-      "${ITEMS[@]}")"; then
-    : # gum choose — the good stuff
+  if [[ $G -eq 1 ]]; then
+    gum_rc=0
+    CHOSEN="$(gum choose --no-limit \
+        --header "pick what to set up  (x/tab toggles · enter confirms · ctrl+c exits)" \
+        --header.foreground 245 \
+        --cursor.foreground 220 \
+        --selected-prefix "✓ " \
+        --unselected-prefix "· " \
+        ${sel_str:+--selected "$sel_str"} \
+        "${ITEMS[@]}")" || gum_rc=$?
+    drain_stray
+    if [[ $gum_rc -eq 0 ]]; then
+      : # gum choose — the good stuff
+    elif [[ $gum_rc -eq 130 ]]; then
+      # ctrl+c — user called it quits, bow out cleanly
+      echo
+      printf '  %scancelled%s\n' "$_y" "$_n"
+      exit 0
+    else
+      # gum hiccup (old flaky flags, no tty, …) — plain prompts
+      ask_plain
+    fi
   else
-    # no gum, or gum couldn't run (old flaky flags, no tty, …) — plain prompts
     ask_plain
   fi
 fi
