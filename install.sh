@@ -293,6 +293,23 @@ ITEMS+=("Uninstall yanker")
 # pick actions
 CHOSEN=""
 
+# fallback prompts (no gum, or gum failed): missing stuff defaults to yes,
+# extras like uninstall / PO token default to no
+ask_plain() {
+  local c=""
+  for item in "${PRESEL[@]}"; do
+    local ans=""
+    read -rp "  $item? [Y/n] " ans < /dev/tty || continue
+    [[ ! "$ans" =~ ^[Nn] ]] && c+="$item"$'\n'
+  done
+  for extra in "Setup PO token provider" "Uninstall yanker"; do
+    local ans=""
+    read -rp "  $extra? [y/N] " ans < /dev/tty || continue
+    [[ "$ans" =~ ^[Yy] ]] && c+="$extra"$'\n'
+  done
+  CHOSEN="$c"
+}
+
 if [[ $YES -eq 1 ]]; then
   # auto: grab everything that's missing
   [[ "$YNK_ST" != ok ]] && CHOSEN+="Install yanker"$'\n'
@@ -300,38 +317,26 @@ if [[ $YES -eq 1 ]]; then
   [[ "$FF_ST"  != ok ]] && CHOSEN+="Install ffmpeg"$'\n'
   [[ "$CL_ST"  != ok && "$(uname -s)" == Linux ]] && CHOSEN+="Install clipboard tools"$'\n'
 
-elif [[ $G -eq 1 ]]; then
-  # gum choose — the good stuff
+else
   sel_str=""
   for s in "${PRESEL[@]}"; do
     [[ -n "$sel_str" ]] && sel_str+=","
     sel_str+="$s"
   done
 
-  CHOSEN="$(gum choose --no-limit \
-    --header "pick what to set up  (space toggles · enter confirms)" \
-    --header.foreground 245 \
-    --cursor.foreground 220 \
-    --selected-prefix "✓ " \
-    --selected-prefix.foreground 78 \
-    --unselected-prefix "· " \
-    --unselected-prefix.foreground 240 \
-    ${sel_str:+--selected "$sel_str"} \
-    "${ITEMS[@]}" 2>/dev/null)" || true
-
-else
-  # no gum: ask about missing stuff (default yes)
-  for item in "${PRESEL[@]}"; do
-    ans=""
-    read -rp "  $item? [Y/n] " ans < /dev/tty || continue
-    [[ ! "$ans" =~ ^[Nn] ]] && CHOSEN+="$item"$'\n'
-  done
-  # offer extras (default no)
-  for extra in "Setup PO token provider" "Uninstall yanker"; do
-    ans=""
-    read -rp "  $extra? [y/N] " ans < /dev/tty || continue
-    [[ "$ans" =~ ^[Yy] ]] && CHOSEN+="$extra"$'\n'
-  done
+  if [[ $G -eq 1 ]] && CHOSEN="$(gum choose --no-limit \
+      --header "pick what to set up  (space toggles · enter confirms)" \
+      --header.foreground 245 \
+      --cursor.foreground 220 \
+      --selected-prefix "✓ " \
+      --unselected-prefix "· " \
+      ${sel_str:+--selected "$sel_str"} \
+      "${ITEMS[@]}")"; then
+    : # gum choose — the good stuff
+  else
+    # no gum, or gum couldn't run (old flaky flags, no tty, …) — plain prompts
+    ask_plain
+  fi
 fi
 
 cleaned="$(echo "$CHOSEN" | tr -d '[:space:]')"
