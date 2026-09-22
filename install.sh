@@ -42,6 +42,9 @@ as_root() {
   else "$@"; fi
 }
 
+# expose helpers to the bash -c subshells spin() runs
+export -f has as_root
+
 # ── package manager ──────────────────────────────
 detect_pm() {
   for c in paru yay pacman apt-get dnf yum zypper apk emerge nix-env snap brew winget; do
@@ -187,12 +190,12 @@ do_uninstall() {
 do_ytdlp() {
   case "$PM" in
     paru|yay)  spin "installing yt-dlp via $PM" "$PM -S --needed --noconfirm yt-dlp" ;;
-    pacman)    spin "installing yt-dlp" "sudo pacman -S --needed --noconfirm yt-dlp" ;;
-    apt)       spin "installing yt-dlp" "sudo apt-get update -qq && sudo apt-get install -yqq yt-dlp" ;;
-    dnf|yum)   spin "installing yt-dlp" "sudo $PM install -y yt-dlp" ;;
-    zypper)    spin "installing yt-dlp" "sudo zypper install -y yt-dlp" ;;
-    apk)       spin "installing yt-dlp" "sudo apk add yt-dlp" ;;
-    emerge)    spin "installing yt-dlp" "sudo emerge yt-dlp" ;;
+    pacman)    spin "installing yt-dlp" "as_root pacman -S --needed --noconfirm yt-dlp" ;;
+    apt)       spin "installing yt-dlp" "as_root apt-get update -qq && as_root apt-get install -yqq yt-dlp" ;;
+    dnf|yum)   spin "installing yt-dlp" "as_root $PM install -y yt-dlp" ;;
+    zypper)    spin "installing yt-dlp" "as_root zypper install -y yt-dlp" ;;
+    apk)       spin "installing yt-dlp" "as_root apk add yt-dlp" ;;
+    emerge)    spin "installing yt-dlp" "as_root emerge yt-dlp" ;;
     nix-env)   spin "installing yt-dlp" "nix-env -iA nixpkgs.yt-dlp" ;;
     brew)      spin "installing yt-dlp" "brew install yt-dlp" ;;
     winget)    spin "installing yt-dlp" "winget install yt-dlp.yt-dlp" ;;
@@ -207,14 +210,14 @@ do_ytdlp() {
 do_ffmpeg() {
   case "$PM" in
     paru|yay)  spin "installing ffmpeg via $PM" "$PM -S --needed --noconfirm ffmpeg" ;;
-    pacman)    spin "installing ffmpeg" "sudo pacman -S --needed --noconfirm ffmpeg" ;;
-    apt)       spin "installing ffmpeg" "sudo apt-get update -qq && sudo apt-get install -yqq ffmpeg" ;;
-    dnf|yum)   spin "installing ffmpeg" "sudo $PM install -y ffmpeg" ;;
-    zypper)    spin "installing ffmpeg" "sudo zypper install -y ffmpeg" ;;
-    apk)       spin "installing ffmpeg" "sudo apk add ffmpeg" ;;
-    emerge)    spin "installing ffmpeg" "sudo emerge ffmpeg" ;;
+    pacman)    spin "installing ffmpeg" "as_root pacman -S --needed --noconfirm ffmpeg" ;;
+    apt)       spin "installing ffmpeg" "as_root apt-get update -qq && as_root apt-get install -yqq ffmpeg" ;;
+    dnf|yum)   spin "installing ffmpeg" "as_root $PM install -y ffmpeg" ;;
+    zypper)    spin "installing ffmpeg" "as_root zypper install -y ffmpeg" ;;
+    apk)       spin "installing ffmpeg" "as_root apk add ffmpeg" ;;
+    emerge)    spin "installing ffmpeg" "as_root emerge ffmpeg" ;;
     nix-env)   spin "installing ffmpeg" "nix-env -iA nixpkgs.ffmpeg" ;;
-    snap)      spin "installing ffmpeg" "sudo snap install ffmpeg" ;;
+    snap)      spin "installing ffmpeg" "as_root snap install ffmpeg" ;;
     brew)      spin "installing ffmpeg" "brew install ffmpeg" ;;
     winget)    spin "installing ffmpeg" "winget install Gyan.FFmpeg" ;;
     *)         echo "  install ffmpeg manually for your platform" ;;
@@ -224,11 +227,11 @@ do_ffmpeg() {
 do_clip() {
   case "$PM" in
     paru|yay)    spin "installing clipboard tools" "$PM -S --needed --noconfirm wl-clipboard xclip" ;;
-    pacman)      spin "installing clipboard tools" "sudo pacman -S --needed --noconfirm wl-clipboard xclip" ;;
-    apt)         spin "installing clipboard tools" "sudo apt-get install -yqq wl-clipboard xclip" ;;
-    dnf|yum)     spin "installing clipboard tools" "sudo $PM install -y wl-clipboard xclip" ;;
-    zypper)      spin "installing clipboard tools" "sudo zypper install -y wl-clipboard xclip" ;;
-    apk)         spin "installing clipboard tools" "sudo apk add wl-clipboard xclip" ;;
+    pacman)      spin "installing clipboard tools" "as_root pacman -S --needed --noconfirm wl-clipboard xclip" ;;
+    apt)         spin "installing clipboard tools" "as_root apt-get install -yqq wl-clipboard xclip" ;;
+    dnf|yum)     spin "installing clipboard tools" "as_root $PM install -y wl-clipboard xclip" ;;
+    zypper)      spin "installing clipboard tools" "as_root zypper install -y wl-clipboard xclip" ;;
+    apk)         spin "installing clipboard tools" "as_root apk add wl-clipboard xclip" ;;
     nix-env)     spin "installing clipboard tools" "nix-env -iA nixpkgs.wl-clipboard nixpkgs.xclip" ;;
     *)           echo "  install wl-clipboard or xclip manually" ;;
   esac
@@ -319,13 +322,13 @@ elif [[ $G -eq 1 ]]; then
 else
   # no gum: ask about missing stuff (default yes)
   for item in "${PRESEL[@]}"; do
-    local ans=""
+    ans=""
     read -rp "  $item? [Y/n] " ans < /dev/tty || continue
     [[ ! "$ans" =~ ^[Nn] ]] && CHOSEN+="$item"$'\n'
   done
   # offer extras (default no)
   for extra in "Setup PO token provider" "Uninstall yanker"; do
-    local ans=""
+    ans=""
     read -rp "  $extra? [y/N] " ans < /dev/tty || continue
     [[ "$ans" =~ ^[Yy] ]] && CHOSEN+="$extra"$'\n'
   done
