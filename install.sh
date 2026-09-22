@@ -58,6 +58,28 @@ yanker_npm_root() {
   esac
 }
 
+# ── npm helpers (work across distros / npm configs) ─
+npm_gprefix() {   # npm's effective global prefix, or ""
+  local p
+  p="$(npm config get prefix 2>/dev/null || true)"
+  [[ -z "$p" || "$p" == "undefined" ]] && p="$(npm prefix -g 2>/dev/null || true)"
+  echo "$p"
+}
+
+npm_shimbin() {   # where a prefix puts CLI shims (prefix dir itself on Windows)
+  local prefix="$1"
+  [[ -n "$prefix" ]] || return 0
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) echo "$prefix" ;;
+    *) echo "$prefix/bin" ;;
+  esac
+}
+
+npm_allow() {     # npm ≥12 gates postinstall scripts behind an allow-list
+  local m="${NPM_MAJOR:-0}"
+  [[ "$m" =~ ^[0-9]+$ ]] && (( m >= 12 )) && echo "--allow-scripts='$PKG,ffmpeg-static'"
+}
+
 # ── package manager ──────────────────────────────
 detect_pm() {
   for c in paru yay pacman apt-get dnf yum zypper apk emerge nix-env snap brew winget; do
@@ -121,7 +143,7 @@ banner() {
 
 # ── scan ─────────────────────────────────────────
 NODE_ST="" NODE_V=""
-NPM_ST=""  NPM_V=""
+NPM_ST=""  NPM_V="" NPM_MAJOR=""
 YNK_ST=""  YNK_V=""
 YT_ST=""   YT_V="" YT_W=""
 FF_ST=""   FF_V=""
@@ -139,6 +161,7 @@ scan() {
   else NODE_ST=miss; NODE_V="—"; fi
 
   if has npm; then NPM_ST=ok; NPM_V="v$(npm -v 2>/dev/null)"
+    NPM_MAJOR="$(npm -v 2>/dev/null | cut -d. -f1)"
   else NPM_ST=miss; NPM_V="—"; fi
 
   if has yanker; then YNK_ST=ok; YNK_V="v$(yanker -v 2>/dev/null)"
@@ -192,7 +215,37 @@ do_yanker() {
     printf '  %s✗ need node ≥%s and npm first%s\n' "$_r" "$NODE_MIN" "$_n" >&2
     return 1
   fi
-  spin "grabbing $PKG" "npm install -g '$PKG@latest'"
+
+  local prefix nmroot cmd title bdir allow
+  title="grabbing $PKG"
+  if nmroot="$(yanker_npm_root)"; then
+    # yanker already on the box — update it where it actually lives
+    title="updating $PKG"
+    prefix="$(dirname "$nmroot")"
+    nmroot="$nmroot/node_modules"
+  else
+    # fresh install — use npm's own global prefix
+    prefix="$(npm_gprefix)"
+    nmroot="$(npm root -g 2>/dev/null || echo "$prefix/lib/node_modules")"
+  fi
+
+  allow="$(npm_allow)"
+  if [[ -n "$prefix" && -n "$nmroot" ]]; then
+    if [[ -w "$nmroot" ]]; then cmd="npm"
+    else cmd="as_root npm"; fi
+    spin "$title" "$cmd install -g --prefix '$prefix' ${allow:+$allow }'$PKG@latest'"
+  else
+    spin "$title" "npm install -g ${allow:+$allow }'$PKG@latest'"
+  fi
+
+  # warn if the CLI shims land somewhere that isn't on PATH
+  if [[ -n "$prefix" ]]; then
+    bdir="$(npm_shimbin "$prefix")"
+    if [[ ":$PATH:" != *":$bdir:"* ]]; then
+      printf '  %s⚠ yanker installs to %s — not on your PATH%s\n' "$_y" "$bdir" "$_n"
+      printf '  %s  add it:  export PATH="%s:$PATH"%s\n' "$_d" "$bdir" "$_n"
+    fi
+  fi
 }
 
 do_uninstall() {
