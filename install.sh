@@ -325,7 +325,7 @@ else
   done
 
   if [[ $G -eq 1 ]] && CHOSEN="$(gum choose --no-limit \
-      --header "pick what to set up  (space toggles · enter confirms)" \
+      --header "pick what to set up  (x/tab toggles · enter confirms)" \
       --header.foreground 245 \
       --cursor.foreground 220 \
       --selected-prefix "✓ " \
