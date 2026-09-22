@@ -93,22 +93,24 @@ PM="${PM_FORCE:-$(detect_pm)}"
 G=0; has gum && G=1
 
 # gum's capability probes can leave DECRPM responses (like ^[[?2026;2$y)
-# sitting in the tty input buffer; if they land just after gum restores echo,
-# the terminal spits them onto the screen. Quietly swallow stragglers after
-# any interactive gum call returns.
+# sitting in the tty input buffer; if they land while echo is on, the terminal
+# spits them onto the screen. Quietly swallow stragglers after any interactive
+# gum call returns — always against /dev/tty: callers may run with stdin
+# redirected (e.g. an actions loop fed by a here-string), where fd 0 is a pipe
+# and `stty` on it fails with ENOTTY.
 drain_stray() {
-  [[ -t 0 ]] || return 0
+  [[ -t 0 || -t /dev/tty ]] || return 0
   local st=""
-  st="$(stty -g 2>/dev/null)" || return 0
+  st="$(stty -g </dev/tty 2>/dev/null)" || return 0
   # hold echo off and keep draining for a short window so late replies
   # (DECRPM/kitty handshakes) can't get splashed onto the screen
-  stty -echo -icanon min 0 time 0 2>/dev/null || true
+  stty -echo -icanon min 0 time 0 </dev/tty 2>/dev/null || true
   local i
   for i in 1 2 3 4 5 6; do
     dd if=/dev/tty bs=1 count=64 of=/dev/null 2>/dev/null || true
     sleep 0.05
   done
-  stty "$st" 2>/dev/null || true
+  stty "$st" </dev/tty 2>/dev/null || true
 }
 
 spin() {
@@ -121,13 +123,16 @@ spin() {
     # gum spin probes the terminal for synchronized output (`\e[?2026$p...`);
     # its DECRQM answer arrives as input while gum never touches echo, so it
     # would get splashed onto the screen. Keep echo off for the spinner's
-    # whole run, then flush whatever straggled in via drain_stray.
+    # whole run, swallow whatever straggled in (still echo-off), then restore.
+    # Everything targets /dev/tty explicitly: inside the actions loop stdin is
+    # a here-string pipe, so `stty` on fd 0 fails with ENOTTY — which is
+    # exactly how the echo-off used to get skipped and the answer splashed.
     local _sp_st=""
-    _sp_st="$(stty -g 2>/dev/null || true)"
-    [[ -n "$_sp_st" ]] && stty -echo 2>/dev/null || true
+    _sp_st="$(stty -g </dev/tty 2>/dev/null || true)"
+    stty -echo </dev/tty 2>/dev/null || true
     gum spin --spinner dot --spinner.foreground 220 --title "$title" -- bash -c "$cmd"
-    [[ -n "$_sp_st" ]] && stty "$_sp_st" 2>/dev/null || true
     drain_stray
+    [[ -n "$_sp_st" ]] && stty "$_sp_st" </dev/tty 2>/dev/null || true
   else
     printf '  %s … ' "$title"
     if bash -c "$cmd" >/dev/null 2>&1; then echo "done"
@@ -242,7 +247,6 @@ fi
 # ── banner ───────────────────────────────────────
 print_logo() {
   cat <<'LOGO'
-            _
  _  _ __ _ _ _ | |_____ _ _
 | || / _` | ' \| / / -_) '_|
  \_, \__,_|_||_|_\_\___|_|
@@ -593,8 +597,12 @@ if [[ $DRY -eq 0 ]] && [[ "${EUID:-$(id -u)}" -ne 0 ]] && has sudo \
   sudo -v 2>/dev/null || true
 fi
 
-# go
-while IFS= read -r sel; do
+# go — iterate over an array, NOT via `<<<`: a here-string redirects the
+# loop's stdin to a pipe, which breaks stty/`-t 0`/`dd if=/dev/tty` inside the
+# actions (spin()'s echo-off would silently fail and gum's DECRQM answer would
+# splash onto the screen). readarray keeps fd 0 as the original tty.
+readarray -t _acts <<< "$CHOSEN"
+for sel in "${_acts[@]}"; do
   [[ -z "$sel" ]] && continue
   case "$sel" in
     "Install yanker"|"Update yanker")     do_yanker    || true ;;
@@ -604,7 +612,7 @@ while IFS= read -r sel; do
     "Install clipboard tools")             do_clip      || true ;;
     "Setup PO token provider"|"Re-setup PO token provider") do_pot || true ;;
   esac
-done <<< "$CHOSEN"
+done
 
 # final check
 echo
