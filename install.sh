@@ -148,6 +148,9 @@ YNK_ST=""  YNK_V=""
 YT_ST=""   YT_V="" YT_W=""
 FF_ST=""   FF_V=""
 CL_ST=""   CL_V=""
+PO_ST=""   PO_V=""
+PO_PLUGDIR="$HOME/.config/yt-dlp/plugins"
+PO_SRVDIR="$HOME/.yanker/pot-provider"
 
 scan() {
   if has node; then
@@ -183,6 +186,28 @@ scan() {
     *) for c in wl-paste xclip xsel; do has "$c" && { CL_V="$c"; break; }; done ;;
   esac
   [[ -n "$CL_V" ]] && CL_ST=ok || { CL_ST=miss; CL_V="—"; }
+
+  scan_pot
+}
+
+# PO token provider: plugin extracted into the yt-dlp plugins dir, and the
+# local server cloned + built. Partial states show up as ⚠.
+scan_pot() {
+  PO_ST=miss; PO_V="—"
+  local plugin=0 server=0 srv="$PO_SRVDIR"
+
+  [[ -d "$PO_PLUGDIR/yt_dlp_plugins" ]] && plugin=1
+  if [[ -d "$srv/server" ]] && { [[ -d "$srv/server/node_modules" ]] \
+    || [[ -d "$srv/server/build" ]] \
+    || [[ -d "$srv/server/dist" ]] \
+    || [[ -d "$srv/server/out" ]]; }; then
+    server=1
+  fi
+
+  if [[ $plugin -eq 1 && $server -eq 1 ]]; then PO_ST=ok; PO_V="plugin + server"
+  elif [[ $plugin -eq 1 ]]; then PO_ST=old; PO_V="plugin only"
+  elif [[ $server -eq 1 ]]; then PO_ST=old; PO_V="server only"
+  fi
 }
 
 # ── status display ───────────────────────────────
@@ -204,6 +229,7 @@ show_status() {
   _row "$NPM_ST"  "npm"       "$NPM_V"
   _row "$YNK_ST"  "yanker"    "$YNK_V"
   _row "$YT_ST"   "yt-dlp"    "$YT_V${YT_W:+ ($YT_W)}"
+  _row "$PO_ST"   "po-token"  "$PO_V"
   _row "$FF_ST"   "ffmpeg"    "$FF_V"
   _row "$CL_ST"   "clipboard" "$CL_V"
   echo
@@ -317,15 +343,19 @@ do_pot() {
   has git   || { echo "  need git for PO token setup" >&2; return 1; }
   has unzip || { echo "  need unzip for PO token setup" >&2; return 1; }
 
-  local plugdir="$HOME/.config/yt-dlp/plugins"
-  local srvdir="$HOME/.yanker/pot-provider"
+  local plugdir="$PO_PLUGDIR"
+  local srvdir="$PO_SRVDIR"
   local zip="$plugdir/pot-provider.zip"
   mkdir -p "$plugdir"
 
-  spin "downloading PO token plugin" \
-    "curl -fsSL 'https://github.com/Brainicism/bgutil-ytdlp-pot-provider/releases/latest/download/bgutil-ytdlp-pot-provider.zip' -o '$zip'"
+  if [[ -d "$plugdir/yt_dlp_plugins" ]]; then
+    echo "  plugin already installed — skipping"
+  else
+    spin "downloading PO token plugin" \
+      "curl -fsSL 'https://github.com/Brainicism/bgutil-ytdlp-pot-provider/releases/latest/download/bgutil-ytdlp-pot-provider.zip' -o '$zip'"
 
-  spin "extracting plugin" "unzip -o '$zip' -d '$plugdir' && rm -f '$zip'"
+    spin "extracting plugin" "unzip -o '$zip' -d '$plugdir' && rm -f '$zip'"
+  fi
 
   if [[ ! -d "$srvdir" ]]; then
     spin "cloning PO server" \
@@ -341,6 +371,10 @@ banner
 show_status
 
 [[ $CHECK -eq 1 ]] && exit 0
+
+# PO provider label reflects whether it's already set up
+POT_ITEM="Setup PO token provider"
+[[ "$PO_ST" == ok || "$PO_ST" == old ]] && POT_ITEM="Re-setup PO token provider"
 
 # build the menu
 ITEMS=()
@@ -363,7 +397,7 @@ if [[ "$CL_ST" == miss && "$(uname -s)" == Linux ]]; then
   PRESEL+=("Install clipboard tools")
 fi
 
-ITEMS+=("Setup PO token provider")
+ITEMS+=("$POT_ITEM")
 ITEMS+=("Uninstall yanker")
 
 # pick actions
@@ -378,7 +412,7 @@ ask_plain() {
     read -rp "  $item? [Y/n] " ans < /dev/tty || continue
     [[ ! "$ans" =~ ^[Nn] ]] && c+="$item"$'\n'
   done
-  for extra in "Setup PO token provider" "Uninstall yanker"; do
+  for extra in "$POT_ITEM" "Uninstall yanker"; do
     local ans=""
     read -rp "  $extra? [y/N] " ans < /dev/tty || continue
     [[ "$ans" =~ ^[Yy] ]] && c+="$extra"$'\n'
@@ -447,7 +481,7 @@ while IFS= read -r sel; do
     "Install yt-dlp"|"Update yt-dlp")     do_ytdlp     || true ;;
     "Install ffmpeg"|"Reinstall ffmpeg")   do_ffmpeg    || true ;;
     "Install clipboard tools")             do_clip      || true ;;
-    "Setup PO token provider")             do_pot       || true ;;
+    "Setup PO token provider"|"Re-setup PO token provider") do_pot || true ;;
   esac
 done <<< "$CHOSEN"
 
