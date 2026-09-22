@@ -118,13 +118,118 @@ spin() {
     return 0
   fi
   if [[ $G -eq 1 ]]; then
+    # gum spin probes the terminal for synchronized output (`\e[?2026$p...`);
+    # its DECRQM answer arrives as input while gum never touches echo, so it
+    # would get splashed onto the screen. Keep echo off for the spinner's
+    # whole run, then flush whatever straggled in via drain_stray.
+    local _sp_st=""
+    _sp_st="$(stty -g 2>/dev/null || true)"
+    [[ -n "$_sp_st" ]] && stty -echo 2>/dev/null || true
     gum spin --spinner dot --spinner.foreground 220 --title "$title" -- bash -c "$cmd"
+    [[ -n "$_sp_st" ]] && stty "$_sp_st" 2>/dev/null || true
     drain_stray
   else
     printf '  %s … ' "$title"
     if bash -c "$cmd" >/dev/null 2>&1; then echo "done"
     else echo "failed"; return 1; fi
   fi
+}
+
+# ── multi-select chooser ─────────────────────────
+# drop-in for gum's `choose` that we fully own: renders the same list plus a
+# bottom hint ending in 'ctrl+c exits'. x/X/tab/space toggle, arrow keys
+# navigate, enter confirms, ctrl+a selects all, ctrl+c cancels (rc 130, like
+# gum). UI is drawn to the tty; only the selection reaches stdout. Preselects
+# the missing installs from $PRESEL.
+pick_choose() {
+  local items=("$@")
+  local -a sel=()
+  local i p cur=0 printed=0 key k2 k3 rc=0 row
+
+  for i in "${!items[@]}"; do
+    for p in "${PRESEL[@]}"; do
+      [[ "${items[$i]}" == "$p" ]] && { sel[$i]=1; break; }
+    done
+  done
+
+  _pick_st="$(stty -g 2>/dev/null || true)"
+  [[ -n "$_pick_st" ]] && stty raw -echo 2>/dev/null || true
+  trap 'stty "${_pick_st:-}" 2>/dev/null || true
+        printf "\033[?25h" > /dev/tty 2>/dev/null || true' RETURN
+  ui() {
+    local s
+    printf -v s '%b' "$1"
+    printf '%s' "${s//$'\n'/$'\r\n'}" > /dev/tty 2>/dev/null || true
+  }
+  ui '\033[?25l'
+
+  # repainting relies on the frame occupying exactly printed rows, so no line
+  # may ever wrap. only the hint is wide enough to — cap it to the terminal
+  # width (minus 2) so the row count stays valid on narrow terminals.
+  _pc_cols="${COLUMNS:-$(tput cols 2>/dev/null || echo 80)}"
+  _pc_cols=$((_pc_cols - 2))
+  [[ $_pc_cols -lt 10 ]] && _pc_cols=10
+
+  while :; do
+    # redraw the frame from its first row. the render advances exactly
+    # printed-1 rows (header + items + blank end with \r\n; the hint does
+    # not), so moving up printed-1 puts the cursor back on the header row.
+    [[ $printed -gt 0 ]] && printf '\033[%dA\r' "$((printed-1))" > /dev/tty || true
+    printed=0
+    ui "\033[2K${_d}pick what to set up  (x/tab toggles)${_n}\n"
+    printed=$((printed+1))
+    for i in "${!items[@]}"; do
+      if [[ $i -eq $cur ]]; then
+        if [[ ${sel[i]:-0} -eq 1 ]]; then row="> ${_g}✓${_n} ${items[$i]}"
+        else row="> ${_y}•${_n} ${items[$i]}"; fi
+      else
+        if [[ ${sel[i]:-0} -eq 1 ]]; then row="  ${_g}✓${_n} ${items[$i]}"
+        else row="  · ${items[$i]}"; fi
+      fi
+      ui "\033[2K${row}\n"
+      printed=$((printed+1))
+    done
+    ui '\033[2K\n'
+    printed=$((printed+1))
+    hint="x toggle · tab toggle · enter confirms · ctrl+a select all · ctrl+c exits"
+    [[ ${#hint} -gt $_pc_cols ]] && hint="${hint:0:$_pc_cols}"
+    ui "\033[2K${_d}${hint}${_n}"
+    printed=$((printed+1))
+
+    # read the next key as a raw byte. bash's read builtin is unusable here:
+    # it translates terminal CR to LF and returns ~130 on a ctrl+c byte even
+    # in raw mode — dd+od bypass it and deliver the exact byte.
+    key="$(dd bs=1 count=1 2>/dev/null | od -An -tu1 | tr -d ' \n')" || true
+    [[ -n "$key" ]] || { rc=1; break; }   # stdin closed → treat as abort
+    case "$key" in
+      27)  # ESC: arrow key
+        read -r -t 0.2 -N1 k2 || k2=""
+        read -r -t 0.2 -N1 k3 || k3=""
+        case "$k2$k3" in
+          '[A'|'[D') if ((cur>0)); then cur=$((cur-1)); fi ;;
+          '[B'|'[C') if ((cur<${#items[@]}-1)); then cur=$((cur+1)); fi ;;
+        esac ;;
+      120|88|9|32) (( sel[cur]=1-sel[cur] )) || true ;;  # x/X/tab/space toggle
+      1) for i in "${!items[@]}"; do sel[$i]=1; done ;;   # ctrl+a select all
+      13|10) rc=0; break ;;                               # enter (CR or LF)
+      3) rc=130; break ;;                                 # ctrl+c cancel
+    esac
+  done
+
+  # clear the frame and park the cursor where the list began
+  [[ $printed -gt 0 ]] && printf '\033[%dA\r' "$((printed-1))" > /dev/tty || true
+  for ((i=0; i<printed; i++)); do printf '\033[2K\r\033[B' > /dev/tty || true; done
+  printf '\033[2K\r\033[%dA' "$printed" > /dev/tty || true
+  ui '\033[?25h'
+  [[ -n "$_pick_st" ]] && stty "$_pick_st" 2>/dev/null || true
+
+  [[ $rc -ne 0 ]] && return "$rc"
+  local out=""
+  for i in "${!items[@]}"; do
+    [[ ${sel[i]:-0} -eq 1 ]] && out+="${items[$i]}"$'\n'
+  done
+  printf '%s' "$out"
+  return 0
 }
 
 if [[ -t 1 ]]; then
@@ -149,9 +254,7 @@ banner() {
   echo
   if [[ $G -eq 1 ]]; then
     print_logo | gum style --foreground 220 --bold
-    gum style --border rounded --border-foreground 240 --padding "0 2" \
-      "$(gum style --foreground 220 --bold installer)" \
-      "$(gum style --foreground 245 "$(uname -sm) · $PM")"
+    printf '  %sinstaller%s  %s%s · %s%s\n' "$_b" "$_n" "$_d" "$(uname -sm)" "$PM" "$_n"
   else
     printf '%s%s' "$_y" "$_b"
     print_logo
@@ -423,7 +526,7 @@ ITEMS+=("Uninstall yanker")
 # pick actions
 CHOSEN=""
 
-# fallback prompts (no gum, or gum failed): missing stuff defaults to yes,
+# fallback prompts (no interactive tty): missing stuff defaults to yes,
 # extras like uninstall / PO token default to no
 ask_plain() {
   local c=""
@@ -448,32 +551,18 @@ if [[ $YES -eq 1 ]]; then
   [[ "$CL_ST"  != ok && "$(uname -s)" == Linux ]] && CHOSEN+="Install clipboard tools"$'\n'
 
 else
-  sel_str=""
-  for s in "${PRESEL[@]}"; do
-    [[ -n "$sel_str" ]] && sel_str+=","
-    sel_str+="$s"
-  done
-
-  if [[ $G -eq 1 ]]; then
-    gum_rc=0
-    CHOSEN="$(gum choose --no-limit \
-        --header "pick what to set up  (x/tab toggles · enter confirms · ctrl+c exits)" \
-        --header.foreground 245 \
-        --cursor.foreground 220 \
-        --selected-prefix "✓ " \
-        --unselected-prefix "· " \
-        ${sel_str:+--selected "$sel_str"} \
-        "${ITEMS[@]}")" || gum_rc=$?
-    drain_stray
-    if [[ $gum_rc -eq 0 ]]; then
-      : # gum choose — the good stuff
-    elif [[ $gum_rc -eq 130 ]]; then
+  if [[ -t 0 && -t 1 ]]; then
+    pick_rc=0
+    CHOSEN="$(pick_choose "${ITEMS[@]}")" || pick_rc=$?
+    if [[ $pick_rc -eq 0 ]]; then
+      : # menu ran — CHOSEN holds the selection
+    elif [[ $pick_rc -eq 130 ]]; then
       # ctrl+c — user called it quits, bow out cleanly
       echo
       printf '  %scancelled%s\n' "$_y" "$_n"
       exit 0
     else
-      # gum hiccup (old flaky flags, no tty, …) — plain prompts
+      # read failed / no interactive tty — plain prompts
       ask_plain
     fi
   else
