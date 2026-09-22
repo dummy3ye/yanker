@@ -45,6 +45,19 @@ as_root() {
 # expose helpers to the bash -c subshells spin() runs
 export -f has as_root
 
+# npm global root that actually contains yanker (e.g. /usr/lib, ~/.local/lib), or ""
+# yanker may live outside the user's npm prefix (e.g. sudo-installed to /usr), so a
+# plain `npm uninstall -g` can silently no-op — resolve the real install location.
+yanker_npm_root() {
+  has yanker || return 1
+  local real
+  real="$(readlink -f "$(command -v yanker)" 2>/dev/null || command -v yanker)"
+  case "$real" in
+    */node_modules/*) echo "${real%/node_modules/*}" ;;
+    *) return 1 ;;
+  esac
+}
+
 # ── package manager ──────────────────────────────
 detect_pm() {
   for c in paru yay pacman apt-get dnf yum zypper apk emerge nix-env snap brew winget; do
@@ -184,7 +197,17 @@ do_yanker() {
 
 do_uninstall() {
   [[ "$NPM_ST" != ok ]] && { echo "  need npm to uninstall" >&2; return 1; }
-  spin "removing $PKG" "npm uninstall -g '$PKG'"
+  local nm_root cmd
+  if nm_root="$(yanker_npm_root)"; then
+    if [[ -w "$nm_root/node_modules" ]]; then
+      cmd="npm uninstall -g --prefix '$(dirname "$nm_root")'"
+    else
+      cmd="as_root npm uninstall -g --prefix '$(dirname "$nm_root")'"
+    fi
+  else
+    cmd="npm uninstall -g"
+  fi
+  spin "removing $PKG" "$cmd '$PKG'"
 }
 
 do_ytdlp() {
@@ -354,6 +377,13 @@ case "$PM" in
       sudo -v 2>/dev/null || true
     fi ;;
 esac
+
+# ...and for uninstalling a root-owned (system-wide) yanker install
+if [[ $DRY -eq 0 ]] && [[ "${EUID:-$(id -u)}" -ne 0 ]] && has sudo \
+   && [[ "$cleaned" == *Uninstallyanker* ]] \
+   && nm_root="$(yanker_npm_root)" && [[ -n "$nm_root" ]] && [[ ! -w "$nm_root/node_modules" ]]; then
+  sudo -v 2>/dev/null || true
+fi
 
 # go
 while IFS= read -r sel; do
