@@ -7,29 +7,38 @@ offer with estimated sizes and grab the one you want. Paste. pick and yank it.
 
 pull from YouTube, Vimeo, SoundCloud, Instagram, TikTok, X and other sites.
 
-![yanker in action](https://raw.githubusercontent.com/dummy3ye/yanker/master/assets/showcase.gif)
+## Why yanker ?
+
+- **Every format, with sizes.** Not just "best guess" you can just choose from the whole list,
+  estimated file size included, sorted by quality.
+
+![yanker and its quality](https://raw.githubusercontent.com/dummy3ye/yanker/master/assets/qua.png)
+
+- **Keeps the terminal clean.** Alt-screen in, non-TTY-safe `--list` out.
+
+![non-tty mode](https://raw.githubusercontent.com/dummy3ye/yanker/master/assets/nontty.png)
+
+- **Custor Output Path.** You can just set where you want all you downloaded(output) stuff to go by just <kbd>Ctrl</kbd> + <kbd>O</kbd>
+
+![non-tty mode](https://raw.githubusercontent.com/dummy3ye/yanker/master/assets/outselector.gif)
+
+- **Grab-protected streams.** If a site's CDN pushes back (403 throttling),
+  yanker retries with fresh extraction and browser cookies before giving up.
+
+> [!WARNING]
+> this app auto pulls cookies for youtube from chrome or firefox, if you face trouble, get cookies.txt by using trusted extention or addon and use that
 
 ## Requirements
 
-- **Node.js ≥ 22** — the only hard requirement. Check yours with `node -v`.
-  - On the wrong version? `nvm install` picks up the version pinned in this
-    project's `.nvmrc` (currently `22`), then `nvm use`.
-  - Anything older — including the Node 18 that ships with Ubuntu 22.04 /
-    Debian 12 / RHEL 9 — is refused before the UI starts, with a message
-    telling you exactly that and how to fix it.
-- **yt-dlp** — _optional_. Used from your PATH if present; otherwise a
-  standalone build is auto-fetched to `~/.yanker/bin` on first run (no
-  Python needed). First run needs network access to `github.com` plus
-  write/execute permission in your home directory.
-- **ffmpeg** — _optional_. Used from your PATH when present, with
-  `ffmpeg-static` as a bundled fallback for merging and mp3 conversion. The
-  fallback downloads a ~30–80MB binary at install time, so offline installs
-  or `--ignore-scripts` need a system `ffmpeg` instead.
+- **Node.js ≥ 22**
+- **yt-dlp** — _optional_.
+- **ffmpeg** — _optional_.
+  `ffmpeg-static` as a bundled fallback for merging and mp3 conversion
 - **Clipboard paste** — _optional_, only for Tab-paste in the URL field:
   Linux needs `wl-paste` (Wayland) or `xclip`/`xsel` (X11), macOS uses
   `pbpaste`, Windows uses PowerShell `Get-Clipboard`.
 
-## Install
+## Installation
 
 ```sh
 npm install -g @dummy3ye/yanker
@@ -41,10 +50,30 @@ Or try it without installing anything:
 npx @dummy3ye/yanker
 ```
 
-The interactive TUI requires a TTY. On non-TTY terminals (scripts, ssh
-pipes), pass a URL with `--best` / `--mp3` / `--list` for headless output.
+or you can just run the cool installer by:
 
-## Usage
+```sh
+curl https://raw.githubusercontent.com/dummy3ye/yanker/refs/heads/master/install.sh | sh
+```
+
+The interactive TUI requires a TTY. On non-TTY terminals (scripts, ssh
+pipes), pass a URL with `--best` / `--mp3` / `--list` for headless output. **look bellow ↓**
+
+### Navigation (inside tui mode)
+
+| Key                                                                          | Action                           |
+| ---------------------------------------------------------------------------- | -------------------------------- |
+| `↵`                                                                          | download / submit                |
+| `↑` `↓`                                                                      | choose a format                  |
+| `esc`                                                                        | back (or cancel)                 |
+| `q`                                                                          | quit (when the field is empty)   |
+| `^c`                                                                         | quit                             |
+| `^t`                                                                         | cycle theme: auto → light → dark |
+| `Ctrl+o`                                                                     | open output dir                  |
+| The `auto` theme follows your terminal's own foreground/background, light or |
+| dark, without guessing.                                                      |
+
+## cli usage
 
 ```sh
 yanker https://youtu.be/dQw4w9WgXcQ      # straight to the format picker
@@ -94,28 +123,6 @@ Playlists are detected automatically — the picker offers "grab all"
 (best or mp3) or "first video only" to walk through the format list of
 the first entry. Press **Tab** in the URL field to paste whatever is in
 your clipboard — if it looks like a link it lands right in the field.
-
-### Keys
-
-| Key     | Action                           |
-| ------- | -------------------------------- |
-| `↵`     | download / submit                |
-| `↑` `↓` | choose a format                  |
-| `esc`   | back (or cancel)                 |
-| `q`     | quit (when the field is empty)   |
-| `^c`    | quit                             |
-| `^t`    | cycle theme: auto → light → dark |
-| `Ctrl+o`| open output dir                  |
-The `auto` theme follows your terminal's own foreground/background, light or
-dark, without guessing.
-
-## Why yanker
-
-- **Every format, with sizes.** Not just "best guess" you can just choose from the whole list,
-  estimated file size included, sorted by quality.
-- **Grab-protected streams.** If a site's CDN pushes back (403 throttling),
-  yanker retries with fresh extraction and browser cookies before giving up.
-- **Keeps the terminal clean.** Alt-screen in, non-TTY-safe `--list` out.
 
 ## Development
 
