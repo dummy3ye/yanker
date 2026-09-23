@@ -1,0 +1,3 @@
+[submodule "youtube-utils"]
+	path = youtube-utils
+	url = https://github.com/iv-org/youtube-utils.git
