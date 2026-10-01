@@ -49,6 +49,16 @@ use `--list` or `--best` when scripting over ssh.
 - `src/lib/format.ts` — byte/duration formatting shared by both UIs
 - `src/lib/config.ts` — the remembered output directory
 
+## Themes
+
+`--theme light` / `--theme dark` / `--theme auto` (the default). `ctrl+t` cycles
+the three in the picker.
+
+Auto-detection reads `COLORFGBG` when the terminal exports it. When it does
+not, auto picks dark unless `COLORTERM=truecolor` says otherwise. If your
+terminal has a light background but exports a truecolor `COLORTERM`, set
+`YANKER_THEME=light` to force it.
+
 ## Configuration
 
 yanker remembers where you last saved downloads. State lives in
