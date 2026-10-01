@@ -295,3 +295,5 @@ worth more than a star — it says what is still missing.
 ## License
 
 [Unlicense](LICENSE)
+
+<!-- Environment overrides are documented in CONTRIBUTING.md -->
