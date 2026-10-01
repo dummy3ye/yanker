@@ -46,6 +46,11 @@ export async function loadConfig(): Promise<YankerConfig> {
   }
 }
 
+/** Test seam: lets tests point the config at a temp dir. */
+export function configPathFor(home: string): string {
+  return path.join(home, '.yanker', 'config.json')
+}
+
 export async function saveConfig(patch: Partial<YankerConfig>): Promise<void> {
   const current = await loadConfig()
   const next = { ...current, ...patch }
