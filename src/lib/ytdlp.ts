@@ -118,7 +118,7 @@ function estimatedSize(format: RawFormat, duration: number | undefined): number 
   const direct = format.filesize ?? format.filesize_approx
   if (direct) return direct
   const tbr = format.tbr ?? format.abr
-  if (tbr && duration) return (tbr / 8) * 1024 * duration
+  if (tbr && duration && duration > 0) return (tbr / 8) * 1024 * duration
   return undefined
 }
 
