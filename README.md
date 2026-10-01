@@ -230,6 +230,11 @@ support the people who make what you save.
 Scripts can therefore distinguish "you asked for something impossible" from
 "the fetch broke", without scraping stderr.
 
+## Support
+
+If this saved you some time, an issue describing what you were trying to do is
+worth more than a star — it says what is still missing.
+
 ## License
 
 [Unlicense](LICENSE)
