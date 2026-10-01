@@ -90,6 +90,10 @@ codec, container, bitrate and estimated file size, best options first. Pick
 one with `↑`/`↓`, hit enter, and watch it fly. Files land in `~/Videos` by
 default, and the saved path is printed when you're finished.
 
+Sizes in the list are **estimates** derived from each format's reported
+bitrate and duration, so treat them as a guide rather than an exact figure —
+the real size depends on the container the site serves.
+
 ### Shell completion
 
 `yanker` has no completion script yet, but the common invocations are short
