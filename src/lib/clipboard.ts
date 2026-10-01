@@ -9,8 +9,13 @@ function sniff(cmd: string[], timeoutMs: number): Promise<string> {
     })
     let out = ''
     child.stdout.on('data', (chunk: Buffer) => (out += chunk.toString()))
+    // `timeout` kills the child without an `error` event, so the promise
+    // would otherwise hang until close and report a partial read.
     child.on('error', () => resolve(''))
     child.on('close', () => resolve(out.trim()))
+    child.on('exit', (code, signal) => {
+      if (signal || code !== 0) resolve('')
+    })
   })
 }
 
