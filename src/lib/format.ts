@@ -11,7 +11,7 @@ export function formatBytes(bytes: number | undefined): string {
 }
 
 export function formatDuration(seconds: number | undefined): string {
-  if (!seconds || !Number.isFinite(seconds)) return ''
+  if (seconds === undefined || !Number.isFinite(seconds) || seconds < 0) return ''
   const s = Math.round(seconds)
   const h = Math.floor(s / 3600)
   const m = Math.floor((s % 3600) / 60)
