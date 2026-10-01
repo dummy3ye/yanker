@@ -38,3 +38,7 @@ export function getTheme(mode: ThemeMode): Theme {
   if (mode === 'dark') return DARK
   return detectMode() === 'light' ? LIGHT : DARK
 }
+
+// `auto` is resolved against the terminal background once and then
+// treated as a concrete mode, so a mid-session background change does not
+// cause a re-render storm.
