@@ -33,3 +33,6 @@ export function useRawKeyMonitor(): void {
     }
   }, [stdin, isRawModeSupported])
 }
+
+// Raw-byte tracking lives here rather than in the picker so the stdin
+// listener can be prepended once for the whole app.
