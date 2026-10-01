@@ -37,7 +37,13 @@ t('truncate width 1', truncate('hello', 1), '…')
 t('truncate width 3', truncate('hello', 3), 'he…')
 t('truncate no-op', truncate('hi', 5), 'hi')
 
-let failed = 0
+// Boundary cases: a size landing exactly on a 1024 boundary, and
+// exactly one unit.
+t('formatBytes(1023)', formatBytes(1023), '1023 B')
+t('formatBytes(1024)', formatBytes(1024), '1.0 KiB')
+t('formatBytes(1048576)', formatBytes(1048576), '1.0 MiB')
+
+
 for (const [name, got, want] of cases) {
   try {
     assert.equal(got, want)
