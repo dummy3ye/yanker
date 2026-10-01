@@ -25,6 +25,17 @@ pull from YouTube, Vimeo, SoundCloud, Instagram, TikTok, X and other sites.
 - **Grab-protected streams.** If a site's CDN pushes back (403 throttling),
   yanker retries with fresh extraction and browser cookies before giving up.
 
+## Troubleshooting
+
+**`yanker` says yt-dlp is missing.** Install it, or let yanker fetch the
+standalone build for you with `yanker --update-yt-dlp`.
+
+**Downloads fail with a 403.** The CDN is challenging the request — retry,
+or pass `--cookies cookies.txt` (see the cookies section below).
+
+**Nothing appears on a non-TTY terminal.** The interactive picker needs a TTY;
+use `--list` or `--best` when scripting over ssh.
+
 ## Requirements
 
 - **Node.js ≥ 22**
