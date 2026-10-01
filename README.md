@@ -265,6 +265,15 @@ Pick by the label (`1080p · avc1 · 60fps`), not by row number.
 Scripts can therefore distinguish "you asked for something impossible" from
 "the fetch broke", without scraping stderr.
 
+**A size looks far too small.** Sizes are estimated from the bitrate whenever
+yt-dlp does not report an exact `filesize`, which is most of the time. The
+estimate assumes a constant bitrate, so VBR encodes read high. Where an exact
+figure exists it is used instead.
+
+**A format shows no size at all.** The stream has no reported bitrate, or the
+video has no duration (a live stream still running). Nothing can be estimated
+in that case, so the label is blank rather than `0 B`.
+
 ## Finding a format id by hand
 
 ```sh
