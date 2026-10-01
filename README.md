@@ -58,6 +58,9 @@ yanker remembers where you last saved downloads. State lives in
 That file is yours to edit or delete — removing it just resets the memory.
 `YANKER_OUT` overrides it for a single run, and `-o` overrides both.
 
+A remembered directory that has since been deleted or unmounted is ignored, so
+yanker falls back to your default rather than failing the download.
+
 ## Requirements
 
 - **Node.js ≥ 22**
