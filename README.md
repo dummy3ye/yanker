@@ -219,6 +219,19 @@ yanker is a personal-archiving tool. Downloading content may violate a
 platform's terms of service — only grab what you're allowed to keep, and
 support the people who make what you save.
 
+## What cookies do and do not fix
+
+`--cookies` sends your browser's cookies to yt-dlp. That resolves the cases
+where the CDN challenges a request it would otherwise serve: age-gated videos,
+members-only uploads, and anything bound to a signed-in session.
+
+It does not help with region blocks (pass `--geo-bypass-country` for those) and
+it does not bypass a takedown. If a video plays in your browser and fails in
+yanker, cookies are almost always the fix.
+
+The file is read by yt-dlp and never sent anywhere else. Netscape format, which
+is what every browser extension exports.
+
 ## Ordering
 
 `--list` and the interactive picker both read the same format table, but they do
