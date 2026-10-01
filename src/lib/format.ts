@@ -42,7 +42,7 @@ export function truncate(text: string, width: number): string {
 export function shortenPath(filepath: string, homeDir: string, width: number): string {
   const pretty = filepath.startsWith(homeDir) ? `~${filepath.slice(homeDir.length)}` : filepath
   if (pretty.length <= width) return pretty
-  const name = pretty.split('/').pop() ?? pretty
+  const name = pretty.split(/[\\/]/).pop() ?? pretty
   if (name.length > width - 7) return `…/${truncate(name, width - 4)}`
   return `…/${name}`
 }
