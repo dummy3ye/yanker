@@ -296,8 +296,7 @@ export function buildChoices(info: VideoInfo, _outDir?: string): DownloadChoice[
   // Several call sites render `<detail> · ~<size>` and several render
   // `<detail>` alone, so keep the prefix in one place rather than
   // repeating it at each site.
-  const sizeLabel = (size: number | undefined) =>
-    size ? ` · ~${formatBytes(size)}` : ''
+  const sizeLabel = (size: number | undefined) => (size ? ` · ~${formatBytes(size)}` : '')
 
   const choices: DownloadChoice[] = []
 
