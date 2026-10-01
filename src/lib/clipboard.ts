@@ -52,3 +52,6 @@ export async function detectClipboardUrl(): Promise<string | undefined> {
   }
   return undefined
 }
+
+// Probes are tried in order and the first plausible http(s) URL wins,
+// so on Wayland the native helper gets a shot before the X11 fallbacks.
