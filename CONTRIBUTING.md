@@ -141,6 +141,15 @@ it -- a reviewer who cannot approve half of it cannot approve any of it.
 3. Keep PRs focused — one logical change per PR. Bigger features are fine as
    untested WIP PRs, but say so in the description.
 
+## House rules
+
+Two that are not negotiable, because both have broken things:
+
+- **Never merge a PR whose CI is red.** A red build that lands is worse than a
+  slow fix, because it stops the next person trusting the signal.
+- **Never rebase a branch someone else has a commit on.** Their commits
+  disappear and there is no way to get them back from the reflog.
+
 ## Structure
 
 ```
