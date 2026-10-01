@@ -36,6 +36,14 @@ or pass `--cookies cookies.txt` (see the cookies section below).
 **Nothing appears on a non-TTY terminal.** The interactive picker needs a TTY;
 use `--list` or `--best` when scripting over ssh.
 
+## How it fits together
+
+- `src/cli.tsx` — argument parsing and the headless paths (`--list`, `--best`, `--mp3`)
+- `src/app.tsx` — the interactive picker
+- `src/lib/ytdlp.ts` — format probing, download, and cookie retry
+- `src/lib/format.ts` — byte/duration formatting shared by both UIs
+- `src/lib/config.ts` — the remembered output directory
+
 ## Configuration
 
 yanker remembers where you last saved downloads. State lives in
