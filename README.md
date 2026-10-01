@@ -101,6 +101,8 @@ sh install.sh
 | `^c`                                                                         | quit                             |
 | `^t`                                                                         | cycle theme: auto → light → dark |
 | `Ctrl+o`                                                                     | open output dir                  |
+| `Tab`                                                                       | paste from clipboard             |
+| `Ctrl+u`                                                                     | clear the url field              |
 | The `auto` theme follows your terminal's own foreground/background, light or |
 | dark, without guessing.                                                      |
 
