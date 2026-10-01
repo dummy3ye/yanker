@@ -83,3 +83,6 @@ export function Picker<T>({
     </Box>
   )
 }
+
+// The selection index is owned by the parent so phase changes
+// (probe -> pick -> download) can reset it without remounting this tree.
