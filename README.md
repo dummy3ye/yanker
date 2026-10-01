@@ -33,6 +33,11 @@ standalone build for you with `yanker --update-yt-dlp`.
 **Downloads fail with a 403.** The CDN is challenging the request — retry,
 or pass `--cookies cookies.txt` (see the cookies section below).
 
+yanker re-extracts the stream with fresh browser cookies before it gives up.
+That retry is bounded, so a persistently hostile CDN fails after a handful of
+attempts rather than hanging — if you are scripting around a known-bad host,
+prefer `--cookies` over relying on the retry.
+
 **Nothing appears on a non-TTY terminal.** The interactive picker needs a TTY;
 use `--list` or `--best` when scripting over ssh.
 
