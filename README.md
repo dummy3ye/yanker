@@ -203,6 +203,17 @@ yanker is a personal-archiving tool. Downloading content may violate a
 platform's terms of service — only grab what you're allowed to keep, and
 support the people who make what you save.
 
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | success |
+| `1` | bad usage — unknown flag, or a url yanker could not parse |
+| `2` | the download itself failed (network, CDN, disk) |
+
+Scripts can therefore distinguish "you asked for something impossible" from
+"the fetch broke", without scraping stderr.
+
 ## License
 
 [Unlicense](LICENSE)
