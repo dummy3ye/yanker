@@ -167,3 +167,9 @@ When in doubt, mirror the style of the file you're touching.
 
 By contributing you agree that your contributions are released into the
 public domain under the [Unlicense](LICENSE).
+
+## Before you open a PR
+
+Run `npm run typecheck` and `npm run lint` locally. The release
+workflow runs both on every push to `master`, so a PR that fails either
+one will block the release.
