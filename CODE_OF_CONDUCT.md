@@ -128,3 +128,5 @@ For answers to common questions about this code of conduct, see the FAQ at
 
 [homepage]: https://www.contributor-covenant.org
 [mozilla]: https://github.com/mozilla/diversity
+
+<!-- Reports go to the maintainer via the contact address on the project page. -->
