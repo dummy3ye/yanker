@@ -9,10 +9,15 @@ function sniff(cmd: string[], timeoutMs: number): Promise<string> {
     })
     let out = ''
     child.stdout.on('data', (chunk: Buffer) => (out += chunk.toString()))
-    // `timeout` kills the child without an `error` event, so the promise
-    // would otherwise hang until close and report a partial read.
+    // `timeout` kills the child with a signal and emits no `error`, so without
+    // this the promise settles only when `close` fires, reporting a partial
+    // read from whatever the helper managed to write before it died.
     child.on('error', () => resolve(''))
-    child.on('close', () => resolve(out.trim()))
+    child.on('close', (code, signal) => {
+      // A non-zero exit or a signal means the probe failed; report nothing
+      // rather than a truncated paste.
+      resolve(code === 0 && !signal ? out.trim() : '')
+    })
     child.on('exit', (code, signal) => {
       if (signal || code !== 0) resolve('')
     })
