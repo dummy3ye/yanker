@@ -263,7 +263,9 @@ const isCombined = (f: RawFormat) =>
   isUsable(f) && !!f.vcodec && f.vcodec !== 'none' && !!f.acodec && f.acodec !== 'none'
 
 const sortByQual = (a: RawFormat, b: RawFormat) =>
-  (b.height ?? 0) - (a.height ?? 0) || (b.tbr ?? b.abr ?? 0) - (a.tbr ?? a.abr ?? 0)
+  (b.height ?? 0) - (a.height ?? 0) ||
+  (b.tbr ?? b.abr ?? 0) - (a.tbr ?? a.abr ?? 0) ||
+  (b.fps ?? 0) - (a.fps ?? 0)
 
 function shortCodec(f: RawFormat): string {
   if (f.vcodec && f.vcodec !== 'none') return String(f.vcodec).split('.')[0] ?? '?'
