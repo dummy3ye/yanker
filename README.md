@@ -90,6 +90,16 @@ codec, container, bitrate and estimated file size, best options first. Pick
 one with `↑`/`↓`, hit enter, and watch it fly. Files land in `~/Videos` by
 default, and the saved path is printed when you're finished.
 
+### Shell completion
+
+`yanker` has no completion script yet, but the common invocations are short
+enough to alias:
+
+```sh
+alias yl='yanker --list'
+alias yb='yanker --best'
+```
+
 ### Cookies (bot-checks & servers)
 
 YouTube starts answering every request with _"Sign in to confirm you're not
