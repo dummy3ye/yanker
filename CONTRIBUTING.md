@@ -26,6 +26,19 @@ For a bug report, the most useful things you can include are:
 - Any error output, verbatim.
 - What you expected vs. what happened.
 
+## Verifying a change
+
+There is no test runner yet, so a change is verified by exercising it:
+
+```sh
+npm run build
+node dist/cli.js --list https://youtu.be/dQw4w9WgXcQ
+```
+
+For anything touching `src/lib/format.ts`, the pure functions can be checked
+directly against the values you expect — they take primitives and return
+strings, with no I/O. Please include the before/after output in the PR.
+
 ## Development setup
 
 Prerequisites: **Node 22+** and npm.
