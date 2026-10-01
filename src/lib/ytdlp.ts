@@ -105,11 +105,20 @@ export type RawFormat = {
   protocol?: string
 }
 
+/**
+ * Estimated size in BYTES.
+ *
+ * yt-dlp reports bitrates in kbps (kilobits per second), so a stream at
+ * `tbr: 4500` moves 4500/8 = 562.5 kilobytes per second. `formatBytes` divides
+ * by 1024 per unit, which only makes sense for bytes — so the estimate has to
+ * be scaled up by 1024 before it is handed over, otherwise every derived
+ * figure reads 1024x too small.
+ */
 function estimatedSize(format: RawFormat, duration: number | undefined): number | undefined {
   const direct = format.filesize ?? format.filesize_approx
   if (direct) return direct
   const tbr = format.tbr ?? format.abr
-  if (tbr && duration) return (tbr / 8) * duration
+  if (tbr && duration) return (tbr / 8) * 1024 * duration
   return undefined
 }
 
