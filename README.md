@@ -79,6 +79,17 @@ or you can just run the cool installer by:
 curl https://raw.githubusercontent.com/dummy3ye/yanker/refs/heads/master/install.sh | sh
 ```
 
+Piping a script straight into a shell is convenient but means you are running
+code you have not read. If you would rather look first:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/dummy3ye/yanker/refs/heads/master/install.sh -o install.sh
+less install.sh
+sh install.sh
+```
+
+`npx @dummy3ye/yanker` sidesteps the question entirely.
+
 ### Navigation (inside tui mode)
 
 | Key                                                                          | Action                           |
