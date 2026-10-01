@@ -48,6 +48,8 @@ use `--list` or `--best` when scripting over ssh.
 - `src/lib/ytdlp.ts` — format probing, download, and cookie retry
 - `src/lib/format.ts` — byte/duration formatting shared by both UIs
 - `src/lib/config.ts` — the remembered output directory
+- `src/lib/clipboard.ts` — paste and copy, with a bounded probe
+- `src/theme.ts` — the three themes and terminal detection
 
 ## Themes
 
