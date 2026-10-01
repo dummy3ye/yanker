@@ -219,6 +219,16 @@ yanker is a personal-archiving tool. Downloading content may violate a
 platform's terms of service — only grab what you're allowed to keep, and
 support the people who make what you save.
 
+## Ordering
+
+`--list` and the interactive picker both read the same format table, but they do
+not always present it in the same order. `--list` prints in yt-dlp's own order;
+the picker sorts by height, then bitrate, then frame rate. Ties are resolved
+deterministically, so the picker's order is stable run to run — just not
+necessarily the same as `--list`.
+
+Pick by the label (`1080p · avc1 · 60fps`), not by row number.
+
 ## Exit codes
 
 | Code | Meaning |
