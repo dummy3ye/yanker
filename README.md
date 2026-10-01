@@ -36,6 +36,20 @@ or pass `--cookies cookies.txt` (see the cookies section below).
 **Nothing appears on a non-TTY terminal.** The interactive picker needs a TTY;
 use `--list` or `--best` when scripting over ssh.
 
+## Configuration
+
+yanker remembers where you last saved downloads. State lives in
+`~/.yanker/config.json`:
+
+```json
+{
+  "lastOutDir": "~/Videos"
+}
+```
+
+That file is yours to edit or delete — removing it just resets the memory.
+`YANKER_OUT` overrides it for a single run, and `-o` overrides both.
+
 ## Requirements
 
 - **Node.js ≥ 22**
