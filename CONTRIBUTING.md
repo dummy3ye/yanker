@@ -65,6 +65,19 @@ Useful scripts:
 Try the CLI against a real URL after building — `npm run link`, then
 `yanker <url> --list` for a quick smoke test.
 
+## Pre-flight
+
+Run these before opening a pull request — they are the same two checks CI runs:
+
+```sh
+npm run typecheck   # tsc --noEmit, strict
+npm run lint        # eslint
+```
+
+`tsconfig.json` has `strict` on, so a widening of a type surfaces here rather
+than at build time. `npm run format:check` covers the prettier side; CI does
+not enforce it, so it is worth running if you touched formatting.
+
 ## Before you submit
 
 Whatever you change, make sure all of these pass:
