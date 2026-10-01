@@ -3,7 +3,7 @@
 a better video **Yoinker**.
 
 Stick a URL in a terminal, watch yanker show you _every_ quality the site
-offer with estimated sizes and grab the one you want. Paste. pick and yank it.
+offers, with estimated sizes and grab the one you want. Paste. pick and yank it.
 
 pull from YouTube, Vimeo, SoundCloud, Instagram, TikTok, X and other sites.
 
@@ -18,7 +18,7 @@ pull from YouTube, Vimeo, SoundCloud, Instagram, TikTok, X and other sites.
 
 ![non-tty mode](https://raw.githubusercontent.com/dummy3ye/yanker/master/assets/nontty.png)
 
-- **Custor Output Path.** You can just set where you want all you downloaded(output) stuff to go by just <kbd>Ctrl</kbd> + <kbd>O</kbd>
+- **Custom output path.** Pick exactly where your downloads land with <kbd>Ctrl</kbd> + <kbd>O</kbd>.
 
 ![non-tty mode](https://raw.githubusercontent.com/dummy3ye/yanker/master/assets/outselector.gif)
 
@@ -48,7 +48,7 @@ npx @dummy3ye/yanker
 ```
 
 or you can just run the cool installer by:
-</br>_(its looks better if you have gum by charm.sh installed)_
+</br>_(it looks better if you have gum by charm.sh installed)_
 
 ```sh
 curl https://raw.githubusercontent.com/dummy3ye/yanker/refs/heads/master/install.sh | sh
@@ -69,7 +69,7 @@ curl https://raw.githubusercontent.com/dummy3ye/yanker/refs/heads/master/install
 | dark, without guessing.                                                      |
 
 The interactive TUI requires a TTY. On non-TTY terminals (scripts, ssh
-pipes), pass a URL with `--best` / `--mp3` / `--list` for headless output. **look bellow ↓**
+pipes), pass a URL with `--best` / `--mp3` / `--list` for headless output. **see below ↓**
 
 ## cli usage
 
@@ -87,8 +87,8 @@ yanker --update-yt-dlp                   # self-update the standalone yt-dlp
 
 `yanker` lists **all** available formats: resolution,
 codec, container, bitrate and estimated file size, best options first. Pick
-one with `↑`/`↓`, hit enter, and watch it fly. Files land in `~/Videos`
-otherwise, and the saved path is printed when you're finished.
+one with `↑`/`↓`, hit enter, and watch it fly. Files land in `~/Videos` by
+default, and the saved path is printed when you're finished.
 
 ### Cookies (bot-checks & servers)
 
@@ -99,7 +99,7 @@ on a VPS, Docker, or any box without Chrome/Firefox on it. That's what
 comes down.
 
 > [!WARNING]
-> this app auto pulls cookies for youtube from chrome or firefox, if you face trouble, get cookies.txt by using trusted extention or addon and use that
+> this app automatically pulls cookies for YouTube from Chrome or Firefox. If you hit trouble, export a `cookies.txt` with a trusted extension or addon and use that
 
 **Get the cookies.** In the browser you actually use for YouTube, export
 them to a Netscape-format file — Chrome: _Get cookies.txt LOCALLY_
