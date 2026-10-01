@@ -16,7 +16,11 @@ function detectMode(): 'light' | 'dark' {
     const [, bg] = colorFgBg.split(';').map(Number)
     return bg === 0 || bg === 15 ? 'dark' : 'light'
   }
-  return process.env.COLORTERM === 'truecolor' ? 'dark' : 'dark'
+  // No COLORFGBG to go on: assume light unless the terminal advertises a
+  // dark background via a truecolor-capable COLORTERM or a dark-ish theme var.
+  if (process.env.COLORTERM === 'truecolor' && process.env.YANKER_THEME !== 'light')
+    return 'dark'
+  return 'light'
 }
 
 const availableModes: ThemeMode[] = ['auto', 'light', 'dark']
