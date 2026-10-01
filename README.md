@@ -253,6 +253,19 @@ Pick by the label (`1080p · avc1 · 60fps`), not by row number.
 Scripts can therefore distinguish "you asked for something impossible" from
 "the fetch broke", without scraping stderr.
 
+## Finding a format id by hand
+
+```sh
+yanker --list 'https://youtu.be/VIDEO' | grep '1080p'
+```
+
+Then hand the id straight to yt-dlp when you want something the picker does not
+offer:
+
+```sh
+yt-dlp -f 137+140 --merge-output-format mp4 'https://youtu.be/VIDEO'
+```
+
 ## Support
 
 If this saved you some time, an issue describing what you were trying to do is
