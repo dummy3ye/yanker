@@ -132,6 +132,11 @@ a pull request, not direct pushes.
 
 ## Pull requests
 
+One logical change per pull request. If the diff touches unrelated files, split
+it -- a reviewer who cannot approve half of it cannot approve any of it.
+
+
+
 1. Create a branch off `master` with a short descriptive name
    (`fix/windows-paths`, `feat/sponsor-block-skip`).
 2. Open a pull request using the template. Fill in the whole thing.
