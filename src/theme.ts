@@ -25,6 +25,9 @@ function detectMode(): 'light' | 'dark' {
 
 const availableModes: ThemeMode[] = ['auto', 'light', 'dark']
 
+/** Modes cycled by ctrl+t, in order. Exported for the help line. */
+export const THEME_CYCLE: readonly ThemeMode[] = availableModes
+
 export function nextThemeMode(current: ThemeMode): ThemeMode {
   const index = availableModes.indexOf(current)
   return availableModes[(index + 1) % availableModes.length]!
