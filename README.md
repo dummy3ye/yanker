@@ -94,7 +94,12 @@ curl https://raw.githubusercontent.com/dummy3ye/yanker/refs/heads/master/install
 | dark, without guessing.                                                      |
 
 The interactive TUI requires a TTY. On non-TTY terminals (scripts, ssh
-pipes), pass a URL with `--best` / `--mp3` / `--list` for headless output. **see below ↓**
+pipes), pass a URL with `--best` / `--mp3` / `--list` for headless output.
+**see below ↓**
+
+Over ssh or in CI, `--list` is the safest bet: it prints every format with
+its estimated size and exits, so it composes with `grep`/`head` instead of
+waiting on a picker that can never be answered.
 
 ## cli usage
 
