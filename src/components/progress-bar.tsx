@@ -24,3 +24,6 @@ export function ProgressBar({ percent, color = '#a78bfa' }: { percent: number; c
     </Box>
   )
 }
+
+// Widths are clamped to a minimum of one cell so a very narrow terminal
+// degrades to a bare percentage instead of dividing by zero.
