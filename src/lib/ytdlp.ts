@@ -320,6 +320,11 @@ export function buildChoices(info: VideoInfo, _outDir?: string): DownloadChoice[
     })
   }
 
+  // `filter` already returns a fresh array, so sorting `combined`/`videos`
+  // is safe -- but `bestVideo` above sorts a filtered copy while
+  // `audioOnly` sorts its own, and none of these touched `formats`.
+  // Kept explicit so a future edit that drops the `.filter()` cannot
+  // silently start sorting `info.formats` in place.
   const combined = formats.filter(isCombined).sort(sortByQual)
 
   const videos = formats.filter(isVideoOnly).sort(sortByQual)
