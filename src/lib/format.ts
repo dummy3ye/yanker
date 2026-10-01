@@ -1,5 +1,5 @@
 export function formatBytes(bytes: number | undefined): string {
-  if (!bytes || !Number.isFinite(bytes) || bytes <= 0) return ''
+  if (bytes === undefined || !Number.isFinite(bytes) || bytes <= 0) return ''
   const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB']
   let n = bytes
   let i = 0
